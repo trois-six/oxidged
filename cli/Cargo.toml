@@ -1,6 +1,6 @@
 [package]
 name = "oxidged-cli"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
     "Robert Pirtle <astropirtle@gmail.com>",
     "Jacob Benison <ge3224@gmail.com>",
@@ -23,4 +23,4 @@ name = "oxidged"
 path = "src/main.rs"
 
 [dependencies]
-oxidged = { path = "..", version = "0.1.0" }
+oxidged = { path = "..", version = "0.2.0" }

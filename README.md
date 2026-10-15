@@ -54,7 +54,7 @@ or, in `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxidged = "0.1"
+oxidged = "0.2"
 ```
 
 The minimum supported Rust version is 1.88.
