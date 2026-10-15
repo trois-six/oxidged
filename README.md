@@ -115,7 +115,7 @@ use oxidged::{Dataset, GedcomVersion, GedcomWriter};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let data = Dataset::from_bytes(std::fs::read("input.ged")?);
 
-    // In the version the data declares…
+    // In the dataset's own version (`Dataset::version`)…
     std::fs::write("output.ged", GedcomWriter::new().write_to_string(&data)?)?;
 
     // …or as GEDCOM 7.0, straight into a file, with the repairs it made.

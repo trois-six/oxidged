@@ -16,7 +16,7 @@ use super::{
 use crate::convert::{built_structure, Converter, Entry, Fate, Fresh, Out, Watch};
 use crate::model::driver::{ToNodes, WriteCx};
 use crate::model::write::Built;
-use crate::model::Header;
+use crate::model::{Dataset, Header};
 use crate::model::{RecordRef, Store};
 use crate::spec::conform::streamed::{Outcome, Streamed};
 use crate::spec::conform::{model_order, FieldOrder};
@@ -94,9 +94,6 @@ const STUB: &str = "@U1@";
 /// Under [`RepairPolicy::Error`], the first repair is an error as soon as
 /// it is found; what was written before stays written.
 ///
-/// [`Dataset`]: crate::Dataset
-/// [`Dataset::records`]: crate::Dataset::records
-///
 /// # Example
 ///
 /// ```rust
@@ -166,7 +163,9 @@ impl<W: io::Write> GedcomStreamWriter<W> {
     /// Starts writing to `writer` with `config`: writes the header (whose
     /// texts and identifiers resolve against `store`), completed and
     /// repaired for the version. The version is the configured one, else
-    /// the one the header declares, else 5.5.1.
+    /// the one the header declares, else 5.5.1; to write a dataset in its
+    /// own version whatever its header declares, start with
+    /// [`for_dataset`](Self::for_dataset).
     ///
     /// # Errors
     ///
@@ -181,10 +180,52 @@ impl<W: io::Write> GedcomStreamWriter<W> {
         store: &S,
     ) -> Result<Self, WriteError> {
         let store = store.as_ref();
+        let from = header
+            .declared_version(store)
+            .map_or_else(GedcomVersion::default, |v| {
+                GedcomVersion::from_version_str(&v)
+            });
+        Self::start(writer, config, header, store, from)
+    }
+
+    /// Starts writing `data` to `writer` with `config`: writes its header
+    /// (an empty one when it has none), completed and repaired for the
+    /// version, as [`new`](Self::new) does. The version is the configured
+    /// one, else the dataset's own ([`Dataset::version`]), the version
+    /// [`GedcomWriter`] writes it in. Its records follow, given to
+    /// [`write_record`](Self::write_record) but for the header (the first
+    /// that [`Dataset::records`] yields, when it has one). A stream read by
+    /// a [`GedcomStreamParser`](crate::GedcomStreamParser) starts so with
+    /// the [`dataset`](crate::StreamedRecord::dataset) of its header, then
+    /// writes the records that follow it.
+    ///
+    /// # Errors
+    ///
+    /// As [`new`](Self::new).
+    pub fn for_dataset(
+        writer: W,
+        mut config: WriterConfig,
+        data: &Dataset,
+    ) -> Result<Self, WriteError> {
+        config.version.get_or_insert(data.version());
+        let default = Header::default();
+        let header = data.header().unwrap_or(&default);
+        Self::start(writer, config, header, data.store(), data.version())
+    }
+
+    /// [`new`](Self::new), the records being of version `from` (what the
+    /// output is converted from, when it is of the other family).
+    fn start(
+        writer: W,
+        config: WriterConfig,
+        header: &Header,
+        store: &Store,
+        from: GedcomVersion,
+    ) -> Result<Self, WriteError> {
         let policy = config.on_nonconformant;
         let credentials = config.credentials;
         let gw = GedcomWriter::with_config(config);
-        let rules = gw.rules_for(header.declared_version(store).as_deref());
+        let rules = gw.config().version.unwrap_or(from).rules();
         let encoding = gw.encoding(rules);
         let mut sink = gw.sink(None, rules, encoding, policy);
         if gw.wants_bom(rules, encoding, false) {
@@ -192,11 +233,6 @@ impl<W: io::Write> GedcomStreamWriter<W> {
         }
         let cx = WriteCx::owned(store, rules.version, true);
         let mut head = header.to_node("HEAD", &cx);
-        let from = header
-            .declared_version(store)
-            .map_or_else(GedcomVersion::default, |v| {
-                GedcomVersion::from_version_str(&v)
-            });
         let convert =
             Converter::new(from, rules.version, gw.config().conversion, false).map(|mut conv| {
                 conv.read_head(&head);

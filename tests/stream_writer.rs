@@ -3,7 +3,7 @@
 //! nothing; elsewhere, only in the ways its documentation lists. Its output
 //! conforms, but for the pointers it cannot check.
 
-use oxidged::model::Header;
+use oxidged::model::{Header, Individual};
 use oxidged::spec::{validate_text, DeviationKind};
 use oxidged::{
     Bom, Dataset, GedcomStreamWriter, GedcomVersion, GedcomWriter, RepairKind, RepairPolicy,
@@ -25,9 +25,7 @@ fn ged_files(dir: &Path, out: &mut Vec<PathBuf>) {
 /// `data` written by the streaming writer, its records in the order the
 /// in-memory writer writes them.
 fn streamed(data: &Dataset, config: WriterConfig) -> (String, WriteReport) {
-    let default = Header::default();
-    let header = data.header().unwrap_or(&default);
-    let mut w = GedcomStreamWriter::new(Vec::new(), config, header, data).unwrap();
+    let mut w = GedcomStreamWriter::for_dataset(Vec::new(), config, data).unwrap();
     for r in data.records().skip(usize::from(data.header().is_some())) {
         w.write_record(r).unwrap();
     }
@@ -418,4 +416,122 @@ fn credentials_are_left_out_by_default() {
             "{all}"
         );
     }
+}
+
+/// With no version configured, the streaming writer writes a dataset in its
+/// own version, as the in-memory writer does: a dataset made in a version,
+/// without a header or with one that declares none, and every fixture.
+#[test]
+fn streams_a_dataset_in_its_own_version_by_default() {
+    let config = WriterConfig {
+        bom: Bom::Never,
+        ..WriterConfig::default()
+    };
+    let in_memory = |data: &Dataset, config: &WriterConfig| {
+        let mut bytes = Vec::new();
+        GedcomWriter::with_config(config.clone())
+            .write(&mut bytes, data)
+            .unwrap();
+        String::from_utf8(bytes).unwrap()
+    };
+    for version in [
+        GedcomVersion::V5_5_1,
+        GedcomVersion::V7_0,
+        GedcomVersion::V7_1,
+    ] {
+        let mut data = Dataset::new(version);
+        data.add(Individual::default()).unwrap();
+        let mut headed = data.clone();
+        headed.set_header(Some(Header::default()));
+        for data in [data, headed] {
+            let (stream, _) = streamed(&data, config.clone());
+            assert!(
+                stream.starts_with(&format!("0 HEAD\n1 GEDC\n2 VERS {version}\n")),
+                "{version}: {stream}"
+            );
+            assert_eq!(stream, in_memory(&data, &config), "{version}");
+        }
+    }
+
+    let mut files = Vec::new();
+    ged_files(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures"),
+        &mut files,
+    );
+    for path in files {
+        let data = Dataset::from_bytes(std::fs::read(&path).unwrap());
+        let vers = format!("2 VERS {}", data.version());
+        let (stream, _) = streamed(&data, config.clone());
+        let written = in_memory(&data, &config);
+        for text in [&stream, &written] {
+            assert_eq!(
+                text.lines().nth(2),
+                Some(vers.as_str()),
+                "{}",
+                path.display()
+            );
+        }
+    }
+}
+
+/// A configured version is written whatever the dataset's own, streamed
+/// as in memory (but for the header a conversion to 7.x declares).
+#[test]
+fn streams_the_configured_version_over_the_datasets() {
+    for (own, target) in [
+        (GedcomVersion::V7_0, GedcomVersion::V5_5_1),
+        (GedcomVersion::V5_5_1, GedcomVersion::V7_0),
+        (GedcomVersion::V7_1, GedcomVersion::V7_0),
+    ] {
+        let mut data = Dataset::new(own);
+        data.add(Individual::default()).unwrap();
+        let config = WriterConfig {
+            version: Some(target),
+            bom: Bom::Never,
+            ..WriterConfig::default()
+        };
+        let (stream, _) = streamed(&data, config.clone());
+        assert!(
+            stream.starts_with(&format!("0 HEAD\n1 GEDC\n2 VERS {target}\n")),
+            "{own} as {target}: {stream}"
+        );
+        let mut bytes = Vec::new();
+        GedcomWriter::with_config(config)
+            .write(&mut bytes, &data)
+            .unwrap();
+        let written = String::from_utf8(bytes).unwrap();
+        // Converted to 7.x, the streamed header declares every extension
+        // tag of known meaning; the records are the same.
+        let records = |t: &str| t[t.find("0 @I1@").unwrap()..].to_owned();
+        assert_eq!(records(&stream), records(&written), "{own} as {target}");
+    }
+}
+
+/// A stream read by the parser and started with its header's dataset is
+/// written as [`GedcomStreamWriter::new`] writes it with that header.
+#[test]
+fn streams_a_parsed_stream_from_its_headers_dataset() {
+    let file: &[u8] = b"0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NAME Ann /Example/\n0 TRLR\n";
+    let write = |by_dataset: bool| {
+        let mut records = oxidged::GedcomStreamParser::new(file).unwrap();
+        let head = records.next().unwrap().unwrap();
+        let mut w = if by_dataset {
+            GedcomStreamWriter::for_dataset(Vec::new(), WriterConfig::default(), head.dataset())
+        } else {
+            let header = head.dataset().header().unwrap();
+            GedcomStreamWriter::new(Vec::new(), WriterConfig::default(), header, &head)
+        }
+        .unwrap();
+        for record in records {
+            w.write_record(record.unwrap().record()).unwrap();
+        }
+        String::from_utf8(w.finish().unwrap().0).unwrap()
+    };
+    let text = write(true);
+    assert!(text.contains("2 VERS 7.0\n"), "{text}");
+    assert!(
+        text.contains("0 @I1@ INDI\n1 NAME Ann /Example/\n"),
+        "{text}"
+    );
+    assert_eq!(text, write(false));
 }

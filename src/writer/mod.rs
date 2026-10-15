@@ -325,8 +325,10 @@ impl From<io::Error> for WriteError {
 /// Configuration of a [`GedcomWriter`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WriterConfig {
-    /// The version to write; `None` (the default) writes the version the
-    /// data declares in `HEAD.GEDC.VERS`, 5.5.1 when it declares none.
+    /// The version to write; `None` (the default) writes the data's own
+    /// version: a dataset's ([`Dataset::version`]), or the version records,
+    /// a tree or a streamed header declare in `HEAD.GEDC.VERS` (5.5.1 when
+    /// they declare none).
     pub version: Option<GedcomVersion>,
     /// The line terminator (default LF).
     pub line_ending: LineEnding,
@@ -467,6 +469,14 @@ impl GedcomWriter {
         &self.config
     }
 
+    /// This writer, set to write `data` in its own version
+    /// ([`Dataset::version`]): what a writer with no version configured
+    /// writes a dataset in, whatever its header declares or whether it has
+    /// one (a dataset made with [`Dataset::new`] may have none).
+    fn in_version_of(&self, data: &Dataset) -> Self {
+        self.clone().gedcom_version(data.version())
+    }
+
     /// The rules of the version `data` is written in.
     fn rules_for(&self, declared: Option<&str>) -> &'static VersionRules {
         self.config
@@ -534,6 +544,9 @@ impl GedcomWriter {
         mut writer: W,
         data: &Dataset,
     ) -> Result<WriteReport, WriteError> {
+        if self.config.version.is_none() {
+            return self.in_version_of(data).write(writer, data);
+        }
         let rules = self.interpretation(data);
         let interprets = rules.is_some();
         if let Some(rules) = rules.filter(|_| !self.drops_credentials(data)) {
@@ -656,6 +669,11 @@ impl GedcomWriter {
         looker: Rc<RefCell<dyn Looker>>,
         head: Structure,
     ) -> Result<Option<(LineSink<'static>, WriteReport)>, WriteError> {
+        if self.config.version.is_none() {
+            return self
+                .in_version_of(data)
+                .write_looked(data, rewrite, looker, head);
+        }
         if self.interpretation(data).is_some() || self.drops_credentials(data) {
             return Ok(None);
         }
@@ -823,6 +841,9 @@ impl GedcomWriter {
         &self,
         data: &Dataset,
     ) -> Result<(String, WriteReport), WriteError> {
+        if self.config.version.is_none() {
+            return self.in_version_of(data).write_to_string_with_report(data);
+        }
         let rules = self.interpretation(data);
         let interprets = rules.is_some();
         if let Some(rules) = rules.filter(|_| !self.drops_credentials(data)) {
@@ -1191,6 +1212,9 @@ impl GedcomWriter {
         &self,
         data: &Dataset,
     ) -> Result<(String, WriteReport), WriteError> {
+        if self.config.version.is_none() {
+            return self.in_version_of(data).write_to_string_whole(data);
+        }
         let built = data.built(self);
         let order = crate::model::field_order;
         match self.plan_for(data, &built, true) {
@@ -1269,8 +1293,6 @@ impl GedcomWriter {
     }
 }
 
-/// The version owned records declare (`HEAD.GEDC.VERS`), 5.5.1 when they
-/// declare none.
 /// The extension tags that tell a file holds credentials
 /// ([`Credentials`]).
 const CREDENTIAL_TAGS: [&str; 3] = ["_PASS", "_ENCR", "_DBID"];
@@ -1315,6 +1337,8 @@ pub(crate) fn drop_draft_credentials(s: &mut crate::profile::draft::Draft<'_>) -
     dropped
 }
 
+/// The version owned records declare (`HEAD.GEDC.VERS`), 5.5.1 when they
+/// declare none.
 fn declared_version(records: &[Structure]) -> GedcomVersion {
     records
         .iter()

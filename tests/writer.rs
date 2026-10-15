@@ -102,6 +102,60 @@ fn headers_per_version() {
     );
 }
 
+/// With no version configured, a dataset is written in its own version
+/// (`Dataset::version`): one made with `Dataset::new` and given records,
+/// with no header or one that declares none, as one read from a file; the
+/// output is the one the version configured explicitly gives.
+#[test]
+fn datasets_are_written_in_their_own_version_by_default() {
+    for version in VERSIONS {
+        let mut data = Dataset::new(version);
+        data.add(Individual::default()).unwrap();
+        let mut headed = data.clone();
+        headed.set_header(Some(oxidged::model::Header::default()));
+        let read = read(&write(&data, version));
+        assert_eq!(read.version(), version);
+        for data in [&data, &headed, &read] {
+            let head = format!("0 HEAD\n1 GEDC\n2 VERS {version}\n");
+            let text = GedcomWriter::new().write_to_string(data).unwrap();
+            assert!(text.starts_with(&head), "{version}: {text}");
+            assert_eq!(text, write(data, version), "{version}");
+            let (text, report) = GedcomWriter::new()
+                .write_to_string_with_report(data)
+                .unwrap();
+            assert!(text.starts_with(&head), "{version}: {text}");
+            let explicit = GedcomWriter::new()
+                .gedcom_version(version)
+                .write_to_string_with_report(data)
+                .unwrap();
+            assert_eq!((text.clone(), report), explicit, "{version}");
+            let mut bytes = Vec::new();
+            GedcomWriter::new()
+                .bom(Bom::Never)
+                .write(&mut bytes, data)
+                .unwrap();
+            assert_eq!(String::from_utf8(bytes).unwrap(), text, "{version}");
+        }
+    }
+}
+
+/// A configured version is written whatever the dataset's own.
+#[test]
+fn a_configured_version_wins_over_the_datasets() {
+    for own in VERSIONS {
+        let mut data = Dataset::new(own);
+        data.add(Individual::default()).unwrap();
+        for target in VERSIONS {
+            let text = write(&data, target);
+            assert!(
+                text.starts_with(&format!("0 HEAD\n1 GEDC\n2 VERS {target}\n")),
+                "{own} as {target}: {text}"
+            );
+            assert_eq!(read(&text).version(), target);
+        }
+    }
+}
+
 // Text cannot inject lines
 
 #[test]

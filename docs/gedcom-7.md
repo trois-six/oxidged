@@ -252,7 +252,7 @@ use oxidged::{Dataset, GedcomVersion, GedcomWriter};
 
 let data = Dataset::parse("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 NAME Ann /Example/\n0 TRLR\n");
 
-// Write in the version the data declares (5.5.1 when it declares none)
+// Write in the dataset's own version (`Dataset::version`): 5.5.1 here
 let output_551 = GedcomWriter::new().write_to_string(&data).unwrap();
 assert!(output_551.contains("2 VERS 5.5.1\n"));
 

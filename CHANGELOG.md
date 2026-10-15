@@ -88,6 +88,14 @@ names and types to oxidged's.
   valid and unique identifiers (never `@VOID@`), the header the version
   requires, values in the target's grammar, terminated last line, no raw
   control characters, no line break that injects a record.
+- With no version configured (`WriterConfig::version` is `None`, the
+  default), a dataset is written in its own version, `Dataset::version`:
+  the one its file declares, or the one it was made with
+  (`Dataset::new`), whether it has a header or not. Pre-release builds
+  wrote a dataset without a header declaring a version as 5.5.1, a
+  `Dataset::new(GedcomVersion::V7_0)` among them. Records, trees and
+  streamed headers, which hold no dataset, are written in the version
+  their `HEAD.GEDC.VERS` declares, 5.5.1 when it declares none.
 - Before the lines, structures are repaired for the target
   (`spec::conform`): an enumeration value outside its set, text where a
   pointer belongs, a value outside its grammar, a structure the version
@@ -228,7 +236,9 @@ names and types to oxidged's.
   trailer, with the conformance repair, conversion and line rules of
   `GedcomWriter`, in memory bounded by one record and the identifiers
   written; its documentation lists where it differs from writing the whole
-  dataset.
+  dataset. `GedcomStreamWriter::for_dataset` starts with a dataset's
+  header, in its version unless one is configured, as `GedcomWriter`
+  writes it; `GedcomStreamWriter::new` with a header and a store.
 
 ### Performance
 
