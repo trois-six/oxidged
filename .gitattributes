@@ -8,3 +8,6 @@
 # encoding normalisation (some fixtures test CR, CRLF and legacy encodings).
 tests/fixtures/conformance/** -text
 tests/profiles/fixtures/** -text
+
+# A real-world sample kept exactly as published (CRLF line endings).
+tests/fixtures/washington.ged -text
