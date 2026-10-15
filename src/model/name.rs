@@ -4,7 +4,7 @@ use crate::tree::{Flat, Structure};
 
 use super::citation::Citation;
 use super::driver::{
-    gedcom_struct, leaf_structure, tag_enum, NodeRef, ReadCx, StdTag, TagField, ToNodes, WriteCx,
+    NodeRef, ReadCx, StdTag, TagField, ToNodes, WriteCx, gedcom_struct, leaf_structure, tag_enum,
 };
 use super::enums::{NameType, PhoneticType, Phrased, RomanizedType};
 use super::list::ThinVec;

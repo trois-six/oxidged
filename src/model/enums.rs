@@ -22,8 +22,8 @@ use crate::spec::schema::Kind;
 use crate::tree::{Flat, FlatPayload, Payload, Structure};
 use crate::version::GedcomVersion;
 
-use super::driver::{gedcom_struct, NodeRef, PayloadField, ReadCx, WriteCx};
-use super::table::{push_span, Code, CopyCx, List, PhrasedRow, StoreCx, Tables};
+use super::driver::{NodeRef, PayloadField, ReadCx, WriteCx, gedcom_struct};
+use super::table::{Code, CopyCx, List, PhrasedRow, StoreCx, Tables, push_span};
 use super::text::Text;
 
 /// One value of an enumeration: its variant name and its spellings in
@@ -868,12 +868,11 @@ impl super::driver::TagField for EventKind {
                 let spellings = [values[i].v551, values[i].v7];
                 let mut k = 0;
                 while k < spellings.len() {
-                    if let Some(s) = spellings[k] {
-                        if let Some(t) = crate::tree::standard_index_const(s) {
-                            if by_tag[t as usize] == 0 {
-                                by_tag[t as usize] = i as u16 + 1;
-                            }
-                        }
+                    if let Some(s) = spellings[k]
+                        && let Some(t) = crate::tree::standard_index_const(s)
+                        && by_tag[t as usize] == 0
+                    {
+                        by_tag[t as usize] = i as u16 + 1;
                     }
                     k += 1;
                 }

@@ -4,8 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
-use oxidged::model::{Dataset, RecordRef};
 use oxidged::GedcomStreamParser;
+use oxidged::model::{Dataset, RecordRef};
 
 /// Every `.ged` file under `dir`.
 fn ged_files(dir: &Path, out: &mut Vec<PathBuf>) {

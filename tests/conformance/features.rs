@@ -206,7 +206,9 @@ pub fn synthetic(people: usize, v7: bool) -> String {
     let mut s = if v7 {
         String::from("0 HEAD\n1 GEDC\n2 VERS 7.0\n")
     } else {
-        String::from("0 HEAD\n1 SOUR EXAMPLE_APP\n1 SUBM @U1@\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @U1@ SUBM\n1 NAME Example Submitter\n")
+        String::from(
+            "0 HEAD\n1 SOUR EXAMPLE_APP\n1 SUBM @U1@\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @U1@ SUBM\n1 NAME Example Submitter\n",
+        )
     };
     for i in 0..people {
         let fam = i / 2;

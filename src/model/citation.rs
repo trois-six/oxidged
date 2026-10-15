@@ -3,7 +3,7 @@
 use crate::tree::{FlatPayload, Payload};
 
 use super::date::Date;
-use super::driver::{gedcom_struct, pointer_or_text_raw, PayloadField, WriteCx};
+use super::driver::{PayloadField, WriteCx, gedcom_struct, pointer_or_text_raw};
 use super::enums::{Certainty, EventKind, Medium, Phrased, Role};
 use super::list::ThinVec;
 use super::multimedia::MultimediaLink;

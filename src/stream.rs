@@ -66,6 +66,7 @@ use std::collections::VecDeque;
 use std::io::BufRead;
 use std::ops::ControlFlow;
 
+use crate::GedcomError;
 use crate::encoding::GedcomEncoding;
 use crate::model::read::{Placed, RecordReader};
 use crate::model::{
@@ -74,7 +75,6 @@ use crate::model::{
 };
 use crate::tree::{RecordSource, TreeReader};
 use crate::version::GedcomVersion;
-use crate::GedcomError;
 
 /// A record read by a [`GedcomStreamParser`]: a dataset of that record
 /// alone, whose store holds its text.

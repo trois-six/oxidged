@@ -245,7 +245,7 @@ pub fn declared_vers(text: &str) -> Option<String> {
             }
             1 => in_gedc = in_head && l.tag == "GEDC",
             2 if in_gedc && l.tag == "VERS" => {
-                return Some(l.payload.unwrap_or("").trim().to_string())
+                return Some(l.payload.unwrap_or("").trim().to_string());
             }
             _ => {}
         }

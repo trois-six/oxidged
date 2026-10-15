@@ -10,8 +10,8 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use oxidged::profile::{export_profiles, import_profiles, Exporter, Interpretation};
-use oxidged::spec::{validate_text, DeviationKind};
+use oxidged::profile::{Exporter, Interpretation, export_profiles, import_profiles};
+use oxidged::spec::{DeviationKind, validate_text};
 use oxidged::{Bom, Dataset, GedcomBuilder, GedcomVersion, GedcomWriter};
 
 /// The deviations of `out` but the 5.5.1 records over 32K no note can

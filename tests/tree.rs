@@ -2,8 +2,8 @@
 //! typing, case by case (ids from the conformance suite and the reviews).
 //! All data is fictitious.
 
-use oxidged::tree::{parse_tree, PayloadRef, Structure, StructureRef, Tree, TreeReader};
 use oxidged::GedcomVersion;
+use oxidged::tree::{PayloadRef, Structure, StructureRef, Tree, TreeReader, parse_tree};
 
 fn h7(body: &str) -> String {
     format!("0 HEAD\n1 GEDC\n2 VERS 7.0\n{body}0 TRLR\n")

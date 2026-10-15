@@ -7,8 +7,8 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroU32;
 
-use crate::tree::{TagHasher, TextPiece, STANDARD_TAGS};
-use crate::writer::{special_bytes, LINE_FEED};
+use crate::tree::{STANDARD_TAGS, TagHasher, TextPiece};
+use crate::writer::{LINE_FEED, special_bytes};
 
 /// Text of the model: a payload, a value, a phrase.
 ///
@@ -911,10 +911,10 @@ impl XrefTable {
             return false;
         };
         let old_hash = hash(&old);
-        if let (at, Some(found)) = self.slot(&old, old_hash) {
-            if found == id {
-                self.remove_slot(at);
-            }
+        if let (at, Some(found)) = self.slot(&old, old_hash)
+            && found == id
+        {
+            self.remove_slot(at);
         }
         if let Some(renamed) = self.renamed.as_deref_mut() {
             renamed.names.push_str(text);

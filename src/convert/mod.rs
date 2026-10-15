@@ -65,11 +65,11 @@ pub(crate) mod text;
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use crate::model::Dataset;
-use crate::spec::conform::{model_order, record_rank, Build, FieldOrder, Rec};
-use crate::tree::{Flat, Node, PayloadRef, Structure, Xref, STANDARD_TAGS};
+use crate::spec::conform::{Build, FieldOrder, Rec, model_order, record_rank};
+use crate::tree::{Flat, Node, PayloadRef, STANDARD_TAGS, Structure, Xref};
 use crate::{GedcomVersion, GedcomWriter};
 use rules::Direction;
-pub(crate) use rules::{Converter, Fate, Fresh, Out, NONE, POINTER, TEXT};
+pub(crate) use rules::{Converter, Fate, Fresh, NONE, Out, POINTER, TEXT};
 
 /// How a conversion between 5.5.1 and 7.x treats the data the target
 /// version has no place for.

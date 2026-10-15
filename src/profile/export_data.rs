@@ -5,9 +5,9 @@
 
 use crate::writer::LineEnding;
 
+use super::ExportProfile;
 use super::dsl::{export_profile, step};
 use super::export::{AssocStyle, MediaPaths, Op, PlaceStyle, Target};
-use super::ExportProfile;
 
 /// Every export profile.
 pub(crate) static PROFILES: &[&ExportProfile] = &[

@@ -9,7 +9,7 @@
 use super::address::Address;
 use super::citation::{Citation, RepositoryCitation};
 use super::date::{ChangeDate, CreationDate, Period};
-use super::driver::{gedcom_struct, StdTag, WriteCx};
+use super::driver::{StdTag, WriteCx, gedcom_struct};
 use super::enums::{EnumList, EventKind, NoteKind, OrdinanceFlag, Phrased, Restriction, Sex};
 use super::event::{Event, NonEvent};
 use super::identifier::{Exid, Refn};

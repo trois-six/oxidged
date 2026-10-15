@@ -8,15 +8,15 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use super::ConversionOptions;
 use super::tables::{
     EXID_TERMS, FAMILYSEARCH_PERSON, HEAD_FILE_URI, HEAD_SUBN_URI, KNOWN_EXTENSIONS, PHRASE_URI,
     RECORD_SUBN_URI, ROLE_NAMES, ROLE_WORDS, TRANSLATION_METHODS,
 };
 use super::text;
-use super::ConversionOptions;
+use crate::GedcomVersion;
 use crate::tree::{Node, Payload, PayloadRef, Structure, Tag, Xref};
 use crate::value::{AgeTexts, DateTexts};
-use crate::GedcomVersion;
 
 /// The direction of a conversion.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -577,22 +577,21 @@ impl Converter {
     fn payload(&self, s: &mut Structure, parent: &str, cx: &mut Cx<'_>) {
         match &mut s.payload {
             Payload::Pointer(p) => {
-                if let (Direction::Up, Some(void)) = (self.direction, &self.void) {
-                    if p.as_str() == Xref::VOID {
-                        *p = Xref::new(&**void);
-                        changed!(cx.out);
-                    }
+                if let (Direction::Up, Some(void)) = (self.direction, &self.void)
+                    && p.as_str() == Xref::VOID
+                {
+                    *p = Xref::new(&**void);
+                    changed!(cx.out);
                 }
             }
             Payload::Text(t) => {
                 if self.direction == Direction::Up
                     && !self.options.keep_obsolete
                     && !is_value(s.tag.as_str(), parent)
+                    && let Some(new) = text::without_escapes(t)
                 {
-                    if let Some(new) = text::without_escapes(t) {
-                        *t = new.into();
-                        changed!(cx.out);
-                    }
+                    *t = new.into();
+                    changed!(cx.out);
                 }
             }
             Payload::None => {}
@@ -954,24 +953,22 @@ impl Converter {
         // which 5.5.1 writes as the value (a role in an event in
         // parentheses), or which the conformance repair keeps as an
         // extension where the value is not one of a closed set.
-        if c.text() == Some("OTHER") && !is(c, "ROLE") || is(c, "ROLE") && parent == "EVEN" {
-            if let Some(i) = c
+        if (c.text() == Some("OTHER") && !is(c, "ROLE") || is(c, "ROLE") && parent == "EVEN")
+            && let Some(i) = c
                 .substructures
                 .iter()
                 .position(|p| self.is_phrase(p.tag.as_str()))
-            {
-                if c.text() == Some("OTHER") {
-                    let phrase = c.substructures.remove(i);
-                    let word = phrase.text().unwrap_or("").to_string();
-                    let word = if is(c, "ROLE") {
-                        format!("({word})")
-                    } else {
-                        word
-                    };
-                    set_text(c, &word);
-                    changed!(cx.out);
-                }
-            }
+            && c.text() == Some("OTHER")
+        {
+            let phrase = c.substructures.remove(i);
+            let word = phrase.text().unwrap_or("").to_string();
+            let word = if is(c, "ROLE") {
+                format!("({word})")
+            } else {
+                word
+            };
+            set_text(c, &word);
+            changed!(cx.out);
         }
         // 7.x says an event took place with `Y`; 5.5.1 does so for these
         // events only, and by the event structure itself for the others.

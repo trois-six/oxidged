@@ -481,9 +481,11 @@ fn model_dates_convert_between_calendars() {
     let back = gregorian.convert_to(&none, &Calendar::Julian, V7).unwrap();
     assert_eq!(back.value.to_str(&none), "ABT JULIAN 15 MAR 1582");
     // An incomplete date cannot be converted.
-    assert!(Date::new("1582")
-        .convert_to(&none, &Calendar::Julian, V7)
-        .is_err());
+    assert!(
+        Date::new("1582")
+            .convert_to(&none, &Calendar::Julian, V7)
+            .is_err()
+    );
 }
 
 #[test]
@@ -945,8 +947,7 @@ fn ages_of(data: &Dataset) -> Vec<Option<String>> {
 fn ages_are_kept_by_the_model() {
     // TS14: an invalid age and ages whose components overflow a byte are
     // kept as written, and written back in the version's form.
-    let file =
-        "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 DEAT\n2 AGE 79\n1 BURI\n2 AGE 1y 400d\n\
+    let file = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 DEAT\n2 AGE 79\n1 BURI\n2 AGE 1y 400d\n\
                 1 CREM\n2 AGE 1y 30m 100w 400d\n1 EVEN\n2 AGE about thirty\n0 TRLR\n";
     let data = read(file);
     let some = |ages: &[&str]| -> Vec<Option<String>> {
@@ -1267,9 +1268,11 @@ fn a_bound_with_unrecognised_words_is_not_converted() {
     let value = DateValue::parse("BET @#DJULIAN@ 1 JAN 1700 old style AND 1710");
     assert!(value.convert_to(&Calendar::Gregorian).is_err());
     let none = Dataset::default();
-    assert!(Date::new("@#DJULIAN@ 1 JAN 1700 old style")
-        .convert_to(&none, &Calendar::Gregorian, V551)
-        .is_err());
+    assert!(
+        Date::new("@#DJULIAN@ 1 JAN 1700 old style")
+            .convert_to(&none, &Calendar::Gregorian, V551)
+            .is_err()
+    );
 }
 
 // Bounded-input properties. The inputs are generated from a fixed seed by a
@@ -1567,10 +1570,10 @@ fn property_times() {
 
 #[cfg(feature = "calendar")]
 mod calendar_properties {
-    use super::{payload, Rng, PROPERTY_CASES, V7};
+    use super::{PROPERTY_CASES, Rng, V7, payload};
+    use oxidged::Dataset;
     use oxidged::model::Date;
     use oxidged::value::{Calendar, CalendarDate, CalendarError, DateValue, Epoch, Month};
-    use oxidged::Dataset;
 
     const CALENDARS: [Calendar; 6] = [
         Calendar::Gregorian,

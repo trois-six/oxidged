@@ -8,8 +8,8 @@ use std::collections::HashMap;
 use std::io::{Cursor, Read, Write};
 
 use oxidged::gedzip::{
-    read_gedzip, write_gedzip, write_gedzip_with_media, GedzipError, GedzipReader, GedzipWriter,
-    GEDCOM_FILENAME,
+    GEDCOM_FILENAME, GedzipError, GedzipReader, GedzipWriter, read_gedzip, write_gedzip,
+    write_gedzip_with_media,
 };
 use oxidged::model::Dataset;
 use oxidged::{GedcomBuilder, GedcomError, GedcomVersion, GedcomWriter};
@@ -180,10 +180,12 @@ fn the_builder_limit_and_strict_mode_apply_to_the_archive() {
     // The writer repairs `SEX male`: the archive holds a conformant file.
     let data = Dataset::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 SEX male\n0 TRLR\n");
     let repaired = write_gedzip(&data).unwrap();
-    assert!(GedcomBuilder::new()
-        .strict(true)
-        .build_from_gedzip(Cursor::new(repaired))
-        .is_ok());
+    assert!(
+        GedcomBuilder::new()
+            .strict(true)
+            .build_from_gedzip(Cursor::new(repaired))
+            .is_ok()
+    );
     // Raw bytes are stored as they are, and strict mode refuses them.
     let mut writer = GedzipWriter::new(Cursor::new(Vec::new())).unwrap();
     writer
@@ -198,14 +200,16 @@ fn the_builder_limit_and_strict_mode_apply_to_the_archive() {
     ));
     // Leniently, the value is kept.
     let lenient = read_gedzip(&raw).unwrap();
-    assert!(lenient
-        .individuals()
-        .get(0)
-        .unwrap()
-        .into_owned()
-        .sex
-        .as_ref()
-        .is_some_and(|s| !s.is_known()));
+    assert!(
+        lenient
+            .individuals()
+            .get(0)
+            .unwrap()
+            .into_owned()
+            .sex
+            .as_ref()
+            .is_some_and(|s| !s.is_known())
+    );
 }
 
 #[test]
@@ -338,8 +342,10 @@ fn an_archive_holds_gedcom_7() {
         gedcom(zip.finish().unwrap().into_inner())
     };
     let v551_writer = GedcomWriter::new().gedcom_version(GedcomVersion::V5_5_1);
-    assert!(with(v551_writer.clone(), &v551)
-        .starts_with("\u{feff}0 HEAD\n1 GEDC\n2 VERS 7.0\n".as_bytes()));
+    assert!(
+        with(v551_writer.clone(), &v551)
+            .starts_with("\u{feff}0 HEAD\n1 GEDC\n2 VERS 7.0\n".as_bytes())
+    );
     let v71 = GedcomWriter::new().gedcom_version(GedcomVersion::V7_1);
     assert!(with(v71, &v551).starts_with("\u{feff}0 HEAD\n1 GEDC\n2 VERS 7.1\n".as_bytes()));
     // A 7.1 dataset stays 7.1.

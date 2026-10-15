@@ -12,8 +12,8 @@ use std::path::{Path, PathBuf};
 
 use oxidged::model::HeaderSource;
 use oxidged::profile::{
-    self, export_profiles, import_profiles, Action, Detection, ExportOptions, Exporter, HeadSource,
-    Interpretation,
+    self, Action, Detection, ExportOptions, Exporter, HeadSource, Interpretation, export_profiles,
+    import_profiles,
 };
 use oxidged::{Dataset, GedcomBuilder, GedcomEncoding, GedcomVersion, GedcomWriter};
 
@@ -204,12 +204,30 @@ const BUILTIN: &[Builtin] = &[
 /// Lossless catalogue rows with a 7.0 target that nothing implements yet,
 /// and why.
 const NOT_YET: &[(&str, &str)] = &[
-    ("TJ-016", "HEAD.SOUR in the file's own code page (Généalogie): detection reads the header byte for byte"),
-    ("TJ-017", "PAF 5.2.18's own ANSEL bytes D9 52 for an ellipsis: needs a PAF ANSEL table"),
-    ("TJ-028", "CONC splitting a UTF-8 sequence (WikiTree): needs joining before decoding"),
-    ("TJ-080", "`_STAT NOT MARRIED` under MARR: meaning inferred by the research, not confirmed"),
-    ("FR-057", "Généatique `_CCB`: the research gives no label for the event"),
-    ("FR-215", "a Geneanet person-sheet URL, not GEDCOM: OxidGene's Geneanet join"),
+    (
+        "TJ-016",
+        "HEAD.SOUR in the file's own code page (Généalogie): detection reads the header byte for byte",
+    ),
+    (
+        "TJ-017",
+        "PAF 5.2.18's own ANSEL bytes D9 52 for an ellipsis: needs a PAF ANSEL table",
+    ),
+    (
+        "TJ-028",
+        "CONC splitting a UTF-8 sequence (WikiTree): needs joining before decoding",
+    ),
+    (
+        "TJ-080",
+        "`_STAT NOT MARRIED` under MARR: meaning inferred by the research, not confirmed",
+    ),
+    (
+        "FR-057",
+        "Généatique `_CCB`: the research gives no label for the event",
+    ),
+    (
+        "FR-215",
+        "a Geneanet person-sheet URL, not GEDCOM: OxidGene's Geneanet join",
+    ),
     ("FR-216", "Geneanet person-sheet text, not GEDCOM"),
     ("FR-217", "Geneanet person-sheet text, not GEDCOM"),
     ("FR-218", "Geneanet person-sheet markup, not GEDCOM"),
@@ -1128,10 +1146,12 @@ fn reports_are_queries() {
         .build_from_bytes(file.to_vec())
         .unwrap();
     assert_eq!(silent, data);
-    assert!(report
-        .deviations
-        .iter()
-        .any(|d| d.to_string().contains("_FREL") || d.line > 0));
+    assert!(
+        report
+            .deviations
+            .iter()
+            .any(|d| d.to_string().contains("_FREL") || d.line > 0)
+    );
 }
 
 #[test]

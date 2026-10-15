@@ -10,7 +10,7 @@
 
 mod common;
 
-use criterion::{criterion_group, Criterion};
+use criterion::{Criterion, criterion_group};
 use oxidged::tree::Tree;
 use oxidged::{Dataset, GedcomBuilder, GedcomStreamParser, GedcomWriter, IndexedDataset};
 use std::alloc::{GlobalAlloc, Layout, System};

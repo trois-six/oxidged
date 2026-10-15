@@ -11,7 +11,7 @@
 //! The check allocates nothing and finds tags by their index: it is the
 //! cost of conformance on a dataset that needs no repair.
 
-use super::{payload, Conformer, Family, Kind, Pick, Schema, SchemaIndex, StructId, DATASET};
+use super::{Conformer, DATASET, Family, Kind, Pick, Schema, SchemaIndex, StructId, payload};
 use crate::model::XrefId;
 use crate::spec::schema::EnumSet;
 use crate::spec::validate::is_external_pointer;

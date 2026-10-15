@@ -3,8 +3,8 @@
 use std::borrow::Cow;
 use std::fmt::Write as _;
 
-use super::lexer::Escaping;
 use super::PayloadRef;
+use super::lexer::Escaping;
 
 /// Writes one structure as a line (and `CONT` lines for the newlines of its
 /// text), LF-terminated.

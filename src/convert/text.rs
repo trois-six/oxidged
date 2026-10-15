@@ -3,7 +3,7 @@
 
 use std::fmt::Write as _;
 
-use super::tables::{LANGUAGES, LANGUAGE_ALIASES, MEDIA_TYPES};
+use super::tables::{LANGUAGE_ALIASES, LANGUAGES, MEDIA_TYPES};
 
 /// A 5.5.1 text with its escape sequences (`@#…@`, p. 11) rewritten for
 /// 7.x, which has none (§1.3): a calendar escape (`@#DJULIAN@`) becomes the
@@ -175,19 +175,19 @@ fn percent_decoded(s: &str) -> Option<String> {
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
     while let Some(&c) = b.get(i) {
-        if c == b'%' {
-            if let (Some(h), Some(l)) = (
+        if c == b'%'
+            && let (Some(h), Some(l)) = (
                 b.get(i + 1).copied().and_then(hex),
                 b.get(i + 2).copied().and_then(hex),
-            ) {
-                let byte = h * 16 + l;
-                if byte == b'/' || byte < 0x20 || byte == 0x7f {
-                    return None;
-                }
-                out.push(byte);
-                i += 3;
-                continue;
+            )
+        {
+            let byte = h * 16 + l;
+            if byte == b'/' || byte < 0x20 || byte == 0x7f {
+                return None;
             }
+            out.push(byte);
+            i += 3;
+            continue;
         }
         out.push(c);
         i += 1;

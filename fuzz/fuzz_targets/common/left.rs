@@ -3,9 +3,9 @@
 //! to move out, a header (whose note takes no pointer) or an extension
 //! record. Shared by the targets that validate what the writer writes.
 
-use oxidged::spec::{validate_text, Deviation, DeviationKind};
-use oxidged::tree::{parse_tree, Payload, Structure};
 use oxidged::GedcomVersion;
+use oxidged::spec::{Deviation, DeviationKind, validate_text};
+use oxidged::tree::{Payload, Structure, parse_tree};
 
 /// The bytes of the structure starting at the 1-based line `line` of
 /// `lines`: its line and every line under it.

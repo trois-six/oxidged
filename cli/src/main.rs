@@ -156,7 +156,7 @@ fn parse_args(command_line: &[String]) -> Result<Args, CliError> {
                         _ => {
                             return Err(usage(format!(
                                 "unknown encoding: {v} (expected UTF-8, UTF-16, ANSEL or ASCII)"
-                            )))
+                            )));
                         }
                     },
                 );
@@ -170,7 +170,7 @@ fn parse_args(command_line: &[String]) -> Result<Args, CliError> {
                     _ => {
                         return Err(usage(format!(
                             "unknown interpretation: {v} (expected none, lossless or best-effort)"
-                        )))
+                        )));
                     }
                 });
             }
@@ -181,7 +181,7 @@ fn parse_args(command_line: &[String]) -> Result<Args, CliError> {
                     other => {
                         return Err(usage(format!(
                             "unknown validation level: {other} (expected strict or lenient)"
-                        )))
+                        )));
                     }
                 });
             }
@@ -193,7 +193,7 @@ fn parse_args(command_line: &[String]) -> Result<Args, CliError> {
                     other => {
                         return Err(usage(format!(
                             "unknown version: {other} (expected 5.5.1, 7.0 or 7.1)"
-                        )))
+                        )));
                     }
                 });
             }

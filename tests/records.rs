@@ -169,13 +169,14 @@ fn records_without_xref_get_distinct_ones() {
         Some("@S1@")
     );
     // The caller's data is left as it was.
-    assert!(data
-        .individuals()
-        .get(1)
-        .unwrap()
-        .into_owned()
-        .xref
-        .is_none());
+    assert!(
+        data.individuals()
+            .get(1)
+            .unwrap()
+            .into_owned()
+            .xref
+            .is_none()
+    );
 }
 
 // =============================================================================
@@ -202,17 +203,21 @@ fn individual_record_round_trips() {
     );
     let occupation = ann.events_of(EventKind::Occupation).next().unwrap();
     assert_eq!(s(&data, &occupation.value), "Weaver");
-    assert!(data
-        .individuals()
-        .get(1)
-        .unwrap()
-        .into_owned()
-        .names
-        .is_empty());
+    assert!(
+        data.individuals()
+            .get(1)
+            .unwrap()
+            .into_owned()
+            .names
+            .is_empty()
+    );
 
     for version in [V551, V70] {
         let out = round_trip(&data, version);
-        assert_has(&out, "0 @I1@ INDI\n1 NAME Ann /Example/\n1 SEX F\n1 BIRT\n2 DATE 15 MAR 1950\n2 PLAC Sampleton, Sample County\n1 DEAT\n");
+        assert_has(
+            &out,
+            "0 @I1@ INDI\n1 NAME Ann /Example/\n1 SEX F\n1 BIRT\n2 DATE 15 MAR 1950\n2 PLAC Sampleton, Sample County\n1 DEAT\n",
+        );
         assert_has(&out, "1 OCCU Weaver\n");
         assert_has(&out, "0 @I2@ INDI\n1 SEX M\n");
     }
@@ -232,13 +237,14 @@ fn family_record_round_trips() {
         .collect();
     assert_eq!(children, ["Bea Example", "Cal Example"]);
     assert_eq!(family.events[0].kind, EventKind::Marriage);
-    assert!(data
-        .families()
-        .get(1)
-        .unwrap()
-        .into_owned()
-        .children
-        .is_empty());
+    assert!(
+        data.families()
+            .get(1)
+            .unwrap()
+            .into_owned()
+            .children
+            .is_empty()
+    );
     assert_eq!(data.families_as_spouse("@I1@").count(), 2);
 
     for version in [V551, V70] {
@@ -1127,9 +1133,10 @@ fn multimedia_link_pointer_round_trips() {
     for out in [round_trip(&data, V551), write_stable(&data, V70)] {
         assert_has(&out, "1 OBJE @M1@\n");
         let back = Dataset::parse(out);
-        assert!(back
-            .find_multimedia("@M1@")
-            .is_some_and(|m| !m.files().is_empty()));
+        assert!(
+            back.find_multimedia("@M1@")
+                .is_some_and(|m| !m.files().is_empty())
+        );
     }
 }
 
@@ -1194,13 +1201,14 @@ fn lds_ordinance_place_round_trips_in_5_5_1() {
     assert_eq!(sealing.kind, OrdinanceKind::SpouseSealing);
     assert_eq!(s(&data, &sealing.place.as_ref().unwrap().name), "Sampleton");
     // The place does not end up anywhere else.
-    assert!(data
-        .individuals()
-        .get(0)
-        .unwrap()
-        .into_owned()
-        .extra
-        .is_empty());
+    assert!(
+        data.individuals()
+            .get(0)
+            .unwrap()
+            .into_owned()
+            .extra
+            .is_empty()
+    );
     assert!(ordinances[0].extra.is_empty());
 
     for version in [V551, V70] {

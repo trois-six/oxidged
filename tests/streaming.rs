@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 use oxidged::encoding::decode;
 use oxidged::model::{Dataset, RecordRef};
-use oxidged::tree::{parse_tree, Structure, Tree, TreeReader};
+use oxidged::tree::{Structure, Tree, TreeReader, parse_tree};
 use oxidged::{GedcomEncoding, GedcomError, GedcomStreamParser, GedcomVersion, StreamedRecord};
 
 const FILE: &str = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n\

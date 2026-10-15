@@ -339,9 +339,11 @@ mod tests {
             "{}",
             direct.0
         );
-        assert!(direct
-            .0
-            .contains("1 PHON 555\n1 EMAIL desk(at)example.invalid\n"));
+        assert!(
+            direct
+                .0
+                .contains("1 PHON 555\n1 EMAIL desk(at)example.invalid\n")
+        );
         for record in [
             "0 @I1@ INDI\n1 _UID 0A1B\n2 _X x\n",
             "0 @I1@ INDI\n1 NAME Ann\n2 _UID 0A1B\n",

@@ -746,11 +746,11 @@ impl Default for TableBox {
 
 impl Drop for TableBox {
     fn drop(&mut self) {
-        if let Some(mut tables) = self.0.take() {
-            if tables.clear() <= SPARE_LIMIT {
-                // Fails only while the thread ends: the tables are dropped.
-                let _ = SPARE.try_with(|spare| spare.set(Some(tables)));
-            }
+        if let Some(mut tables) = self.0.take()
+            && tables.clear() <= SPARE_LIMIT
+        {
+            // Fails only while the thread ends: the tables are dropped.
+            let _ = SPARE.try_with(|spare| spare.set(Some(tables)));
         }
     }
 }

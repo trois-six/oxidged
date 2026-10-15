@@ -8,7 +8,7 @@ use crate::spec::schema::Kind;
 use crate::value::{AgeTexts, AgeValue, DateExact, DatePeriod, DateTexts, DateValue, Time};
 use crate::version::GedcomVersion;
 
-use super::driver::{gedcom_struct, Converted, WriteCx};
+use super::driver::{Converted, WriteCx, gedcom_struct};
 use super::list::ThinVec;
 use super::node::{Extra, Node, Value};
 use super::note::Note;

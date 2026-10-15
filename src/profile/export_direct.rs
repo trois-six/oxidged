@@ -22,13 +22,13 @@ use std::rc::Rc;
 use crate::model::driver::{RowRewrite, RowWrite, WriteCx};
 use crate::model::{Citation, Dataset, Place, RecordRef, XrefId};
 use crate::tree::STANDARD_TAGS;
-use crate::tree::{standard_index, standard_index_const, FlatPayload, PayloadRef, Xref, UNKNOWN};
+use crate::tree::{FlatPayload, PayloadRef, UNKNOWN, Xref, standard_index, standard_index_const};
 use crate::writer::Looker;
-use crate::writer::{special_bytes, LINE_FEED};
+use crate::writer::{LINE_FEED, special_bytes};
 
 use super::export::{
-    impossible_date, place_in, AssocStyle, Limits, Op, PlaceStyle, Placed, Step, UNION_EVENTS,
-    Y_EVENTS,
+    AssocStyle, Limits, Op, PlaceStyle, Placed, Step, UNION_EVENTS, Y_EVENTS, impossible_date,
+    place_in,
 };
 
 /// Whether a direct export knows what the fold `op` changes ([`Census`]),
@@ -533,10 +533,11 @@ impl Census {
         }
         // The substructure before said nothing when this one is not below
         // it.
-        if let Some(bare) = s.bare.take() {
-            if level == 1 && self.said.has(bare) {
-                s.flags |= flag::BARE_EVENT;
-            }
+        if let Some(bare) = s.bare.take()
+            && level == 1
+            && self.said.has(bare)
+        {
+            s.flags |= flag::BARE_EVENT;
         }
         if s.extension.is_some_and(|l| level <= l) {
             s.extension = None;
@@ -672,10 +673,10 @@ impl Looker for Census {
         let Some(mut s) = self.seen.take() else {
             return true;
         };
-        if let Some(bare) = s.bare.take() {
-            if self.said.has(bare) {
-                s.flags |= flag::BARE_EVENT;
-            }
+        if let Some(bare) = s.bare.take()
+            && self.said.has(bare)
+        {
+            s.flags |= flag::BARE_EVENT;
         }
         // The header, the submitters and the submission were folded apart.
         if matches!(s.tag, Some(HEAD | SUBM | SUBN)) {

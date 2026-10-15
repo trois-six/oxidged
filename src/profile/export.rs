@@ -31,25 +31,25 @@ use std::io;
 use std::ops::Range;
 use std::rc::Rc;
 
-use crate::convert::{convert_structures, ConversionOptions};
+use crate::convert::{ConversionOptions, convert_structures};
 use crate::model::driver::WriteCx;
 use crate::model::{Dataset, RecordRef};
 use std::borrow::Cow;
 
-use crate::spec::conform::{conform_records, Checked, Rec};
-use crate::tree::{standard_index, standard_index_const, Flat, Structure, Xref, STANDARD_TAGS};
+use crate::GedcomVersion;
+use crate::spec::conform::{Checked, Rec, conform_records};
+use crate::tree::{Flat, STANDARD_TAGS, Structure, Xref, standard_index, standard_index_const};
 use crate::writer::{
     Bom, Credentials, GedcomWriter, LineEnding, LineSink, OutputEncoding, Repair, WriteError,
     XrefIndex,
 };
-use crate::GedcomVersion;
 
+use super::ExportProfile;
 use super::draft::{Draft, Value};
 use super::util::{
     child, child_mut, child_text, given_part, has, is, name_value, payload_str, pointer_node,
     retag, set_text, suffix_part, surname_part, text_node,
 };
-use super::ExportProfile;
 
 /// How written files name their media files.
 #[non_exhaustive]
@@ -663,11 +663,12 @@ impl Exporter {
     /// places folded are kept to report with the write's.
     fn fold_with(&self, data: &Dataset, records: &mut Vec<Draft<'_>>, direct: bool) -> Folded {
         let to = self.version();
-        if to.is_v7() && !data.version().is_v7() {
-            if let Some(producer) = data.producer() {
-                let rules = super::RuleSet::of(producer, data.interpretation());
-                super::interpret::interpret_with(records, to, &rules);
-            }
+        if to.is_v7()
+            && !data.version().is_v7()
+            && let Some(producer) = data.producer()
+        {
+            let rules = super::RuleSet::of(producer, data.interpretation());
+            super::interpret::interpret_with(records, to, &rules);
         }
         let mut cx = Cx {
             v7: to.is_v7(),
@@ -1075,17 +1076,17 @@ impl Exporter {
     /// The importer's limit on the file's size, first among the limits.
     fn size_limit(&self, bytes: u64, report: &mut ExportReport) {
         let t = &self.profile.target;
-        if let Some(max) = t.max_bytes {
-            if bytes > max {
-                report.limits.insert(
-                    0,
-                    Limit {
-                        rows: t.rows,
-                        record: None,
-                        detail: format!("{bytes} bytes, over the importer's {max}"),
-                    },
-                );
-            }
+        if let Some(max) = t.max_bytes
+            && bytes > max
+        {
+            report.limits.insert(
+                0,
+                Limit {
+                    rows: t.rows,
+                    record: None,
+                    detail: format!("{bytes} bytes, over the importer's {max}"),
+                },
+            );
         }
     }
 
@@ -1208,14 +1209,14 @@ impl<'a> Limits<'a> {
         if indi {
             self.individuals += 1;
         }
-        if let Some(max) = t.max_depth {
-            if depth > max {
-                self.deep.push(Limit {
-                    rows: t.rows,
-                    record: record(),
-                    detail: format!("structures {depth} levels deep, over the importer's {max}"),
-                });
-            }
+        if let Some(max) = t.max_depth
+            && depth > max
+        {
+            self.deep.push(Limit {
+                rows: t.rows,
+                record: record(),
+                detail: format!("structures {depth} levels deep, over the importer's {max}"),
+            });
         }
         if let (Some(max), true) = (t.max_name, indi) {
             for len in names {
@@ -1228,14 +1229,14 @@ impl<'a> Limits<'a> {
                 }
             }
         }
-        if let (Some(max), Some(n)) = (t.max_children, children) {
-            if n > max {
-                self.children.push(Limit {
-                    rows: t.rows,
-                    record: record(),
-                    detail: format!("{n} children, over the importer's {max}"),
-                });
-            }
+        if let (Some(max), Some(n)) = (t.max_children, children)
+            && n > max
+        {
+            self.children.push(Limit {
+                rows: t.rows,
+                record: record(),
+                detail: format!("{n} children, over the importer's {max}"),
+            });
         }
     }
 
@@ -1744,10 +1745,8 @@ fn run_steps(
 ) {
     // The records a step changes are those it reports a fold of.
     let told = steps.iter().all(|s| s.fold.folds_each_change());
-    if !told {
-        if let Some(t) = touched.as_deref_mut() {
-            t.fill(true);
-        }
+    if !told && let Some(t) = touched.as_deref_mut() {
+        t.fill(true);
     }
     let base = cx.next_seq;
     cx.next_seq += u16::try_from(steps.len()).unwrap_or(u16::MAX);
@@ -2446,18 +2445,18 @@ fn run_on<'s>(
                         child_text(c, "PEDI").is_none_or(|p| p.trim().eq_ignore_ascii_case("birth"))
                     })
                 });
-                if let (Some(&first), Some(birth)) = (famcs.first(), birth) {
-                    if birth != first {
-                        let moved = r.substructures.remove(birth);
-                        r.substructures.insert(first, moved);
-                        cx.fold(
-                            rows,
-                            FoldKind::Reordered,
-                            false,
-                            x.as_deref(),
-                            "the birth family first",
-                        );
-                    }
+                if let (Some(&first), Some(birth)) = (famcs.first(), birth)
+                    && birth != first
+                {
+                    let moved = r.substructures.remove(birth);
+                    r.substructures.insert(first, moved);
+                    cx.fold(
+                        rows,
+                        FoldKind::Reordered,
+                        false,
+                        x.as_deref(),
+                        "the birth family first",
+                    );
                 }
             }
         }
@@ -2734,19 +2733,17 @@ fn run_on<'s>(
                             continue;
                         }
                         // HUSB/WIFE ages.
-                        if let Some(s) = e.substructures.get(k) {
-                            if matches!(s.tag.as_str(), "HUSB" | "WIFE")
-                                && fields.iter().any(|(t, _)| *t == "AGE")
-                            {
-                                if let Some(age) = child_text(s, "AGE") {
-                                    notes.push(format!(
-                                        "{} age: {age}",
-                                        if is(s, "HUSB") { "Husband" } else { "Wife" }
-                                    ));
-                                    e.substructures.remove(k);
-                                    continue;
-                                }
-                            }
+                        if let Some(s) = e.substructures.get(k)
+                            && matches!(s.tag.as_str(), "HUSB" | "WIFE")
+                            && fields.iter().any(|(t, _)| *t == "AGE")
+                            && let Some(age) = child_text(s, "AGE")
+                        {
+                            notes.push(format!(
+                                "{} age: {age}",
+                                if is(s, "HUSB") { "Husband" } else { "Wife" }
+                            ));
+                            e.substructures.remove(k);
+                            continue;
                         }
                         k += 1;
                     }
@@ -2842,10 +2839,10 @@ fn run_on<'s>(
         Op::SourceFieldsAsNote => {
             for r in records.iter_mut().filter(|r| is(r, "SOUR")) {
                 let x = r.xref.clone();
-                if !has(r, "TITL") {
-                    if let Some(abbr) = child_text(r, "ABBR").map(str::to_string) {
-                        r.substructures.insert(0, text_node("TITL", &abbr));
-                    }
+                if !has(r, "TITL")
+                    && let Some(abbr) = child_text(r, "ABBR").map(str::to_string)
+                {
+                    r.substructures.insert(0, text_node("TITL", &abbr));
                 }
                 let mut lines = Vec::new();
                 for (tag, label) in [
@@ -3056,11 +3053,11 @@ fn run_on<'s>(
                     }
                     if let Some(sfx) = child_text(n, "NSFX").map(str::to_string) {
                         let value = payload_str(n).to_string();
-                        if suffix_part(&value).is_empty() {
-                            if let Some(s) = surname_part(&value) {
-                                let v = name_value(given_part(&value), s, sfx.trim());
-                                set_text(n, &v);
-                            }
+                        if suffix_part(&value).is_empty()
+                            && let Some(s) = surname_part(&value)
+                        {
+                            let v = name_value(given_part(&value), s, sfx.trim());
+                            set_text(n, &v);
                         }
                     }
                 }
@@ -3382,20 +3379,20 @@ fn run_on<'s>(
                 let at = records
                     .iter()
                     .position(|r| is(r, "INDI") && r.xref.as_deref().is_some_and(|x| x == home));
-                if let (Some(first), Some(at)) = (first_indi, at) {
-                    if at != first {
-                        let x = records.get(at).and_then(|r| r.xref.clone());
-                        if let Some(moved) = records.get_mut(first..=at) {
-                            moved.rotate_right(1);
-                        }
-                        cx.fold(
-                            rows,
-                            FoldKind::Reordered,
-                            false,
-                            x.as_deref(),
-                            "the home person first",
-                        );
+                if let (Some(first), Some(at)) = (first_indi, at)
+                    && at != first
+                {
+                    let x = records.get(at).and_then(|r| r.xref.clone());
+                    if let Some(moved) = records.get_mut(first..=at) {
+                        moved.rotate_right(1);
                     }
+                    cx.fold(
+                        rows,
+                        FoldKind::Reordered,
+                        false,
+                        x.as_deref(),
+                        "the home person first",
+                    );
                 }
             }
         }
@@ -3651,18 +3648,17 @@ fn run_on<'s>(
                     .substructures
                     .iter_mut()
                     .find(|c| is(c, "BAPM") || is(c, "CHR"))
+                    && !has(bapm, "_GODP")
                 {
-                    if !has(bapm, "_GODP") {
-                        bapm.substructures
-                            .push(text_node("_GODP", &godparents.join(", ")));
-                        cx.fold(
-                            rows,
-                            FoldKind::Added,
-                            false,
-                            x.as_deref(),
-                            "_GODP beside the godparents",
-                        );
-                    }
+                    bapm.substructures
+                        .push(text_node("_GODP", &godparents.join(", ")));
+                    cx.fold(
+                        rows,
+                        FoldKind::Added,
+                        false,
+                        x.as_deref(),
+                        "_GODP beside the godparents",
+                    );
                 }
             }
         }
@@ -3670,19 +3666,19 @@ fn run_on<'s>(
 }
 
 fn fix_colons(s: &mut Draft<'_>, changed: &mut bool) {
-    if let Some(t) = s.text() {
-        if t.contains(':') {
-            let fixed = t.replace(':', " ");
-            set_text(
-                s,
-                fixed
-                    .split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ")
-                    .as_str(),
-            );
-            *changed = true;
-        }
+    if let Some(t) = s.text()
+        && t.contains(':')
+    {
+        let fixed = t.replace(':', " ");
+        set_text(
+            s,
+            fixed
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+                .as_str(),
+        );
+        *changed = true;
     }
     for c in s.substructures.iter_mut().filter(|c| {
         matches!(
@@ -3718,10 +3714,10 @@ fn each_tag<'s>(s: &mut Draft<'s>, tag: &str, f: &mut dyn FnMut(&mut Draft<'s>))
 
 fn each_date<'s>(s: &'s Draft<'s>, f: &mut dyn FnMut(&'s str)) {
     for c in &s.substructures {
-        if is(c, "DATE") {
-            if let Some(t) = c.text() {
-                f(t);
-            }
+        if is(c, "DATE")
+            && let Some(t) = c.text()
+        {
+            f(t);
         }
         each_date(c, f);
     }
@@ -3977,12 +3973,12 @@ fn extensions_as_notes(
 }
 
 fn flatten_lines(s: &mut Draft<'_>, changed: &mut bool) {
-    if let Some(t) = s.text() {
-        if t.contains('\n') {
-            let flat = t.split('\n').map(str::trim).collect::<Vec<_>>().join(" ");
-            set_text(s, &flat);
-            *changed = true;
-        }
+    if let Some(t) = s.text()
+        && t.contains('\n')
+    {
+        let flat = t.split('\n').map(str::trim).collect::<Vec<_>>().join(" ");
+        set_text(s, &flat);
+        *changed = true;
     }
     for c in &mut s.substructures {
         flatten_lines(c, changed);
@@ -4087,18 +4083,18 @@ fn join_contacts(s: &mut Draft<'_>, join: bool, n: &mut usize) {
 
 fn collect_citation_refns<'s>(s: &mut Draft<'s>, out: &mut Vec<(String, Draft<'s>)>) {
     for c in &mut s.substructures {
-        if is(c, "SOUR") {
-            if let Some(p) = c.pointer().map(str::to_string) {
-                let refns: Vec<Draft<'s>> = c
-                    .substructures
-                    .iter()
-                    .filter(|x| is(x, "REFN"))
-                    .cloned()
-                    .collect();
-                if !refns.is_empty() {
-                    c.substructures.retain(|x| !is(x, "REFN"));
-                    out.extend(refns.into_iter().map(|r| (p.clone(), r)));
-                }
+        if is(c, "SOUR")
+            && let Some(p) = c.pointer().map(str::to_string)
+        {
+            let refns: Vec<Draft<'s>> = c
+                .substructures
+                .iter()
+                .filter(|x| is(x, "REFN"))
+                .cloned()
+                .collect();
+            if !refns.is_empty() {
+                c.substructures.retain(|x| !is(x, "REFN"));
+                out.extend(refns.into_iter().map(|r| (p.clone(), r)));
             }
         }
         collect_citation_refns(c, out);
@@ -4337,27 +4333,27 @@ fn source_records<'s>(
 
 fn source_pointers<'s>(s: &mut Draft<'s>, make: &mut dyn FnMut(&str) -> Xref, n: &mut usize) {
     for c in &mut s.substructures {
-        if is(c, "SOUR") {
-            if let Value::Text(t) = &c.payload {
-                let title = t.to_string();
-                let x = make(&title);
-                c.payload = Value::Pointer(Cow::Owned(x.as_str().to_string()));
-                // The text's own lines are the title now; TEXT goes under DATA.
-                let texts: Vec<Draft<'s>> = c
-                    .substructures
-                    .iter()
-                    .filter(|s| is(s, "TEXT"))
-                    .cloned()
-                    .collect();
-                if !texts.is_empty() {
-                    c.substructures.retain(|s| !is(s, "TEXT"));
-                    let mut data = Draft::new("DATA");
-                    data.substructures.extend(texts);
-                    c.substructures.push(data);
-                }
-                *n += 1;
-                continue;
+        if is(c, "SOUR")
+            && let Value::Text(t) = &c.payload
+        {
+            let title = t.to_string();
+            let x = make(&title);
+            c.payload = Value::Pointer(Cow::Owned(x.as_str().to_string()));
+            // The text's own lines are the title now; TEXT goes under DATA.
+            let texts: Vec<Draft<'s>> = c
+                .substructures
+                .iter()
+                .filter(|s| is(s, "TEXT"))
+                .cloned()
+                .collect();
+            if !texts.is_empty() {
+                c.substructures.retain(|s| !is(s, "TEXT"));
+                let mut data = Draft::new("DATA");
+                data.substructures.extend(texts);
+                c.substructures.push(data);
             }
+            *n += 1;
+            continue;
         }
         source_pointers(c, make, n);
     }
@@ -5299,10 +5295,10 @@ fn media_paths(records: &mut [Draft<'_>], cx: &mut Cx<'_>, touched: &mut [bool])
             let new = match style {
                 MediaPaths::FileName => p.rsplit('/').next().unwrap_or(&p).to_string(),
                 MediaPaths::Relative => {
-                    if let Some(root) = &root {
-                        if let Some(rest) = p.strip_prefix(root.trim_end_matches('/')) {
-                            p = rest.trim_start_matches('/').to_string();
-                        }
+                    if let Some(root) = &root
+                        && let Some(rest) = p.strip_prefix(root.trim_end_matches('/'))
+                    {
+                        p = rest.trim_start_matches('/').to_string();
                     }
                     // A drive letter and a leading slash out.
                     let bytes = p.as_bytes();
@@ -5396,15 +5392,15 @@ fn short_xrefs(
 }
 
 fn remap(s: &mut Draft<'_>, map: &HashMap<String, Xref>) {
-    if let Some(x) = &s.xref {
-        if let Some(new) = map.get(&**x) {
-            s.xref = Some(Cow::Owned(new.as_str().to_string()));
-        }
+    if let Some(x) = &s.xref
+        && let Some(new) = map.get(&**x)
+    {
+        s.xref = Some(Cow::Owned(new.as_str().to_string()));
     }
-    if let Value::Pointer(p) = &s.payload {
-        if let Some(new) = map.get(&**p) {
-            s.payload = Value::Pointer(Cow::Owned(new.as_str().to_string()));
-        }
+    if let Value::Pointer(p) = &s.payload
+        && let Some(new) = map.get(&**p)
+    {
+        s.payload = Value::Pointer(Cow::Owned(new.as_str().to_string()));
     }
     for c in &mut s.substructures {
         remap(c, map);

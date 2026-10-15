@@ -21,11 +21,11 @@ use std::fmt::Write as _;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::calendar::{astronomical_year, max_day, Calendar, Epoch, Month, Spelling};
+use super::calendar::{Calendar, Epoch, Month, Spelling, astronomical_year, max_day};
 use super::time::Time;
 use super::{
-    ascii_upper, is_ext_tag, is_integer, single_spaced, span, word_iter, words, Checker, Grammar,
-    ValueError, Word,
+    Checker, Grammar, ValueError, Word, ascii_upper, is_ext_tag, is_integer, single_spaced, span,
+    word_iter, words,
 };
 use crate::GedcomVersion;
 
@@ -668,15 +668,15 @@ fn parse_value(text: &str, ck: &mut Checker) -> DateValue {
     // A calendar in front of the whole value, before its keyword: not the
     // grammar of either version, but written by some programs.
     let mut default = None;
-    if let [first, second, ..] = list {
-        if let (Some((calendar, _)), Some(_)) = (
+    if let [first, second, ..] = list
+        && let (Some((calendar, _)), Some(_)) = (
             Calendar::from_marker(first.text),
             Keyword::from_word(second.text),
-        ) {
-            ck.fail(|| "the calendar must follow the keyword".to_string());
-            default = Some(calendar);
-            list = &list[1..];
-        }
+        )
+    {
+        ck.fail(|| "the calendar must follow the keyword".to_string());
+        default = Some(calendar);
+        list = &list[1..];
     }
     let default = default.as_ref();
 
@@ -888,18 +888,18 @@ fn parse_date(
         ..CalendarDate::default()
     };
     let mut rest = list;
-    if let Some(first) = rest.first() {
-        if let Some((calendar, form)) = Calendar::from_marker(first.text) {
-            // A marker names a calendar only when a date follows it.
-            if rest.len() > 1 {
-                if let Some(grammar) = ck.grammar() {
-                    ck.require(calendar.marker_is_valid(first.text, form, grammar), || {
-                        format!("{:?} is not a calendar of this version", first.text)
-                    });
-                }
-                date.calendar = calendar;
-                rest = &rest[1..];
+    if let Some(first) = rest.first()
+        && let Some((calendar, form)) = Calendar::from_marker(first.text)
+    {
+        // A marker names a calendar only when a date follows it.
+        if rest.len() > 1 {
+            if let Some(grammar) = ck.grammar() {
+                ck.require(calendar.marker_is_valid(first.text, form, grammar), || {
+                    format!("{:?} is not a calendar of this version", first.text)
+                });
             }
+            date.calendar = calendar;
+            rest = &rest[1..];
         }
     }
 
@@ -924,14 +924,14 @@ fn parse_date(
         }
         Month::from_word(word)
     };
-    if let [day, ..] = rest {
-        if is_integer(day.text) && month_at(1).is_some() {
-            if let Ok(value) = day.text.parse::<u8>() {
-                date.day = Some(value);
-                day_word = Some(day.text);
-                read = 1;
-            }
-        }
+    if let [day, ..] = rest
+        && is_integer(day.text)
+        && month_at(1).is_some()
+        && let Ok(value) = day.text.parse::<u8>()
+    {
+        date.day = Some(value);
+        day_word = Some(day.text);
+        read = 1;
     }
     if let Some(month) = month_at(read) {
         date.month = Some(month);
@@ -950,12 +950,12 @@ fn parse_date(
             epoch_attached = true;
         }
         read += 1;
-        if date.epoch.is_none() {
-            if let Some((epoch, spelling)) = rest.get(read).and_then(|w| Epoch::from_word(w.text)) {
-                date.epoch = Some(epoch);
-                epoch_spelling = Some(spelling);
-                read += 1;
-            }
+        if date.epoch.is_none()
+            && let Some((epoch, spelling)) = rest.get(read).and_then(|w| Epoch::from_word(w.text))
+        {
+            date.epoch = Some(epoch);
+            epoch_spelling = Some(spelling);
+            read += 1;
         }
     }
     let nothing_read = read == 0 && !rest.is_empty();
@@ -1340,26 +1340,25 @@ fn converted_from<'p>(raw: Option<&str>, phrase: Option<&'p str>) -> Option<&'p 
 /// later year is kept where the migration guide takes it
 /// ([`takes_later_year`]), and the year written elsewhere.
 fn resolve_dual_years(value: DateValue, single: bool) -> DateValue {
-    if let (DateValue::Date(date), true) = (&value, single) {
-        if let (None, None, None, Some(dual)) = (date.day, &date.month, &date.epoch, date.dual_year)
-        {
-            let first = CalendarDate {
-                dual_year: None,
-                ..date.clone()
-            };
-            let second = CalendarDate {
-                year: Some(dual),
-                ..first.clone()
-            };
-            return DateValue::Between(first, second);
-        }
+    if let (DateValue::Date(date), true) = (&value, single)
+        && let (None, None, None, Some(dual)) = (date.day, &date.month, &date.epoch, date.dual_year)
+    {
+        let first = CalendarDate {
+            dual_year: None,
+            ..date.clone()
+        };
+        let second = CalendarDate {
+            year: Some(dual),
+            ..first.clone()
+        };
+        return DateValue::Between(first, second);
     }
     let mut value = value;
     for date in value.dates_mut() {
-        if let Some(dual) = date.dual_year.take() {
-            if takes_later_year(date, dual) {
-                date.year = Some(dual);
-            }
+        if let Some(dual) = date.dual_year.take()
+            && takes_later_year(date, dual)
+        {
+            date.year = Some(dual);
         }
     }
     value

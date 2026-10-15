@@ -97,9 +97,11 @@ fn continuations_join_under_any_tag() {
     // One level too high: the previous sibling.
     assert_eq!(notes[1].text(), Some("c\nd"));
     assert_eq!(i.first("_EXT").unwrap().text(), Some("value\nmore"));
-    assert!(flat(&tree)
-        .iter()
-        .all(|l| !l.contains("CONT") && !l.contains("CONC")));
+    assert!(
+        flat(&tree)
+            .iter()
+            .all(|l| !l.contains("CONT") && !l.contains("CONC"))
+    );
 }
 
 #[test]

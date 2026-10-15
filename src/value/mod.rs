@@ -51,7 +51,7 @@ mod time;
 pub use age::{AgeBound, AgeDuration, AgeKeyword, AgeValue};
 pub use calendar::{Calendar, Epoch, Month};
 #[cfg(feature = "calendar")]
-pub use conversion::{CalendarError, Weekday, MAX_RATA_DIE, MAX_YEAR};
+pub use conversion::{CalendarError, MAX_RATA_DIE, MAX_YEAR, Weekday};
 pub use date::{Approximation, CalendarDate, DateExact, DatePeriod, DateValue};
 pub use time::Time;
 

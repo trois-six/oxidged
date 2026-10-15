@@ -14,8 +14,8 @@
 
 use std::io::{BufReader, Read};
 
-use oxidged::encoding::{decode, DecodeReader};
-use oxidged::tree::{parse_tree, Structure, Tree, TreeReader};
+use oxidged::encoding::{DecodeReader, decode};
+use oxidged::tree::{Structure, Tree, TreeReader, parse_tree};
 use oxidged::version::detect_version;
 use oxidged::{Dataset, GedcomBuilder, GedcomStreamParser};
 

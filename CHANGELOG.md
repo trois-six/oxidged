@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The workspace (the library, `oxidged-cli`, the fuzz targets and the
+  tools) is written in Rust edition 2024 instead of 2021, and formatted in
+  rustfmt's 2024 style. The MSRV stays 1.88, the public API and every
+  output are unchanged: `Detection::chain` keeps its 2021 lifetime capture
+  through `use<>`.
+
 ## [0.1.0] — 2026-10-15
 
 The first release of oxidged: a Rust library that reads any GEDCOM file
@@ -276,4 +286,5 @@ names and types to oxidged's.
   (`--keep-obsolete`), `--sanitize`, `--convert-encoding`, `--profile`,
   `--detect`, `--list-profiles`, `--interpretation`.
 
+[Unreleased]: https://github.com/trois-six/oxidged/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/trois-six/oxidged/releases/tag/v0.1.0

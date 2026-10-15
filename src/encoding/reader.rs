@@ -2,7 +2,7 @@
 
 use std::io::{self, BufRead, Read};
 
-use super::detect::{declared_char, sniff, Mode, SNIFF_WINDOW};
+use super::detect::{Mode, SNIFF_WINDOW, declared_char, sniff};
 use super::{Decoder, GedcomEncoding};
 
 /// A reader that decodes GEDCOM bytes of any encoding into UTF-8 text.

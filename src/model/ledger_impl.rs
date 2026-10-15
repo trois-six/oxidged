@@ -22,11 +22,11 @@ use super::{
     PlaceTranslation, Refn, RepositoryCitation, RomanizedName, RomanizedVariation, SourceText,
     SpouseLink, TextTranslation,
 };
+use crate::GedcomVersion;
 use crate::spec::conform::{Field, FieldOrder};
 use crate::spec::index::name_is;
 use crate::spec::schema::Schema as Tables;
 use crate::spec::tables;
-use crate::GedcomVersion;
 
 /// The typed structures and the structure types each stands for.
 macro_rules! structures {

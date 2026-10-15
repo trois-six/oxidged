@@ -176,7 +176,7 @@ impl<'a> IntoIterator for &'a Extra {
 
 // ---- Untyped structures in a dataset's tables ---------------------------
 
-use super::table::{copy_list, reserve, CopyCx, Item, Items, List, NodeRow, StoreCx, Tables, View};
+use super::table::{CopyCx, Item, Items, List, NodeRow, StoreCx, Tables, View, copy_list, reserve};
 use super::text::{Span, TextRef};
 
 impl super::table::sealed::Stored for Node {

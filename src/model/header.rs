@@ -4,7 +4,7 @@ use super::address::Address;
 use super::date::ExactDate;
 use std::borrow::Cow;
 
-use super::driver::{gedcom_struct, Slot, StdTag, WriteCx};
+use super::driver::{Slot, StdTag, WriteCx, gedcom_struct};
 use super::enums::{CharacterSet, GedcomForm};
 use super::note::{Note, TextTranslation};
 use super::text::{Store, Text, XrefId};

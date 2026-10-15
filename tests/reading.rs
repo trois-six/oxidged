@@ -5,7 +5,7 @@
 
 use std::io::BufReader;
 
-use oxidged::encoding::{decode, encode, DecodeReader, GedcomEncoding};
+use oxidged::encoding::{DecodeReader, GedcomEncoding, decode, encode};
 use oxidged::model::{
     Address, CharacterSet, Dataset, EventKind, Individual, Multimedia, Note, NoteContent,
     RecordRef, Repository, Sex, SharedNote, Source, Text,
@@ -250,10 +250,12 @@ fn file_size_limit_refuses_a_larger_input() {
         builder.build_from_bytes(large.as_bytes()),
         Err(GedcomError::FileTooLarge { max: 100, .. })
     ));
-    assert!(GedcomBuilder::new()
-        .max_file_size(2000)
-        .build_from_str(large)
-        .is_ok());
+    assert!(
+        GedcomBuilder::new()
+            .max_file_size(2000)
+            .build_from_str(large)
+            .is_ok()
+    );
 }
 
 // ----------------------------------------------------------------------------
@@ -365,20 +367,22 @@ fn duplicate_identifiers_keep_both_records_and_find_the_first() {
 fn family_without_members_is_read() {
     let data = Dataset::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @F1@ FAM\n0 TRLR\n");
     assert_eq!(data.families().len(), 1);
-    assert!(data
-        .families()
-        .get(0)
-        .unwrap()
-        .into_owned()
-        .husband
-        .is_none());
-    assert!(data
-        .families()
-        .get(0)
-        .unwrap()
-        .into_owned()
-        .children
-        .is_empty());
+    assert!(
+        data.families()
+            .get(0)
+            .unwrap()
+            .into_owned()
+            .husband
+            .is_none()
+    );
+    assert!(
+        data.families()
+            .get(0)
+            .unwrap()
+            .into_owned()
+            .children
+            .is_empty()
+    );
 }
 
 // ----------------------------------------------------------------------------
@@ -531,13 +535,14 @@ fn blank_and_whitespace_only_lines_are_skipped() {
         data.individuals().get(0).unwrap().into_owned().sex,
         Some(Sex::Male)
     );
-    assert!(data
-        .individuals()
-        .get(0)
-        .unwrap()
-        .into_owned()
-        .extra
-        .is_empty());
+    assert!(
+        data.individuals()
+            .get(0)
+            .unwrap()
+            .into_owned()
+            .extra
+            .is_empty()
+    );
     assert_eq!(stream(bytes).to_structures(), data.to_structures());
 }
 

@@ -109,7 +109,7 @@ impl SchemaIndex {
     /// The required substructures of `ty`: their cells, in the order of
     /// the tables.
     #[inline]
-    pub(crate) fn required(&self, ty: StructId) -> impl Iterator<Item = &'static Cell> {
+    pub(crate) fn required(&self, ty: StructId) -> impl Iterator<Item = &'static Cell> + use<> {
         let (start, len) = self.rows.get(usize::from(ty)).map_or((0, 0), |r| {
             (usize::from(r.required), usize::from(r.nrequired))
         });

@@ -1,7 +1,7 @@
 [package]
 name = "oxidged-fuzz"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 publish = false
 description = "cargo-fuzz targets for oxidged (not part of the crate's build)."
 

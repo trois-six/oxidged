@@ -239,7 +239,10 @@ fn downgrades_to_5_5_1() {
         (
             "role",
             "0 @I1@ INDI\n1 ASSO @I2@\n2 ROLE FRIEND\n1 ASSO @I2@\n2 ROLE OTHER\n3 PHRASE Landlord\n0 @I2@ INDI\n",
-            &["1 ASSO @I2@\n2 RELA friend\n", "1 ASSO @I2@\n2 RELA Landlord\n"],
+            &[
+                "1 ASSO @I2@\n2 RELA friend\n",
+                "1 ASSO @I2@\n2 RELA Landlord\n",
+            ],
         ),
         (
             "exid",
@@ -251,7 +254,11 @@ fn downgrades_to_5_5_1() {
             "0 @I1@ INDI\n1 NAME Ann /Example/\n2 TRAN アン\n3 LANG ja-Hrkt\n2 TRAN Ann\n3 LANG ja-Latn\n",
             &["2 FONE アン\n3 TYPE kana\n", "2 ROMN Ann\n3 TYPE romaji\n"],
         ),
-        ("language", "0 @U1@ SUBM\n1 NAME Ann\n1 LANG de\n", &["1 LANG German\n"]),
+        (
+            "language",
+            "0 @U1@ SUBM\n1 NAME Ann\n1 LANG de\n",
+            &["1 LANG German\n"],
+        ),
         (
             "media",
             "0 @M1@ OBJE\n1 FILE file:///C:/photos/a%20b.png\n2 FORM image/png\n3 MEDI PHOTO\n",
@@ -280,7 +287,10 @@ fn downgrades_to_5_5_1() {
         (
             "png-object",
             "0 @M1@ OBJE\n1 FILE photo.png\n2 FORM image/png\n0 @I1@ INDI\n1 OBJE @M1@\n",
-            &["0 @M1@ OBJE\n1 FILE photo.png\n2 FORM png\n", "1 OBJE @M1@\n"],
+            &[
+                "0 @M1@ OBJE\n1 FILE photo.png\n2 FORM png\n",
+                "1 OBJE @M1@\n",
+            ],
         ),
         (
             "event-association",

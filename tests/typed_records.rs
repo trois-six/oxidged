@@ -76,7 +76,10 @@ fn header_5() {
         Some(GedcomForm::LineageLinked)
     );
     let out = write(&data);
-    assert_has(&out, "2 CORP Example Corp\n3 ADDR 1 Sample Road\n4 CITY Sampleton\n3 PHON 555-0100\n3 PHON 555-0101\n3 EMAIL a@@example.com\n3 FAX 555-0102\n3 WWW https://example.com\n");
+    assert_has(
+        &out,
+        "2 CORP Example Corp\n3 ADDR 1 Sample Road\n4 CITY Sampleton\n3 PHON 555-0100\n3 PHON 555-0101\n3 EMAIL a@@example.com\n3 FAX 555-0102\n3 WWW https://example.com\n",
+    );
     assert_has(&out, "1 SUBN @B1@\n");
     assert_has(&out, "1 PLAC\n2 FORM City, County, Country\n");
     assert_has(&out, "1 NOTE A header note\n");
@@ -151,7 +154,10 @@ fn names() {
     assert_eq!(opt(&data, kind.phrase.as_ref()), Some("Stage name".into()));
     assert_eq!(name.detail().translations[0].pieces.len(), 1);
     let out = write(&data);
-    assert_has(&out, "1 NAME Ann Marie /Example/\n2 GIVN Ann\n2 GIVN Marie\n2 NICK Annie\n2 TYPE OTHER\n3 PHRASE Stage name\n2 TRAN Анна /Пример/\n3 LANG ru\n3 GIVN Анна\n");
+    assert_has(
+        &out,
+        "1 NAME Ann Marie /Example/\n2 GIVN Ann\n2 GIVN Marie\n2 NICK Annie\n2 TYPE OTHER\n3 PHRASE Stage name\n2 TRAN Анна /Пример/\n3 LANG ru\n3 GIVN Анна\n",
+    );
     assert_has(&out, "1 NAME /Sample/\n");
     assert!(!out.contains("SURN"), "{out}");
 
@@ -163,7 +169,10 @@ fn names() {
     assert_eq!(name.detail().kind.as_ref().unwrap().value, NameType::Birth);
     assert_eq!(name.detail().phonetic[0].pieces.len(), 1);
     let out = write(&data);
-    assert_has(&out, "2 TYPE birth\n2 FONE Taro /Yamada/\n3 TYPE kana\n3 GIVN Taro\n2 ROMN Taro /Yamada/\n3 TYPE romaji\n2 NOTE A name note\n");
+    assert_has(
+        &out,
+        "2 TYPE birth\n2 FONE Taro /Yamada/\n3 TYPE kana\n3 GIVN Taro\n2 ROMN Taro /Yamada/\n3 TYPE romaji\n2 NOTE A name note\n",
+    );
 }
 
 /// Events and attributes: their payloads (continued: D11), dates, places
@@ -291,7 +300,10 @@ fn families() {
     );
     let out = write(&data);
     assert_has(&out, "1 HUSB @VOID@\n2 PHRASE Unknown father\n");
-    assert_has(&out, "1 WIFE @I2@\n1 CHIL @I1@\n2 PHRASE Eldest\n2 _FREL Natural\n1 CHIL @VOID@\n2 PHRASE Stillborn child\n");
+    assert_has(
+        &out,
+        "1 WIFE @I2@\n1 CHIL @I1@\n2 PHRASE Eldest\n2 _FREL Natural\n1 CHIL @VOID@\n2 PHRASE Stillborn child\n",
+    );
     assert_has(
         &out,
         "1 MARR\n2 DATE 1 JAN 1890\n2 HUSB\n3 AGE 25y\n2 WIFE\n3 AGE 22y\n",
@@ -331,7 +343,10 @@ fn family_links() {
     );
     assert_eq!(indi.spouse_of[0].notes.len(), 1);
     let out = write(&data);
-    assert_has(&out, "1 FAMC @F1@\n2 PEDI BIRTH\n1 FAMC @F1@\n2 PEDI ADOPTED\n2 STAT CHALLENGED\n3 PHRASE Doubtful\n1 FAMC @VOID@\n2 PEDI OTHER\n3 PHRASE Raised by a neighbour\n");
+    assert_has(
+        &out,
+        "1 FAMC @F1@\n2 PEDI BIRTH\n1 FAMC @F1@\n2 PEDI ADOPTED\n2 STAT CHALLENGED\n3 PHRASE Doubtful\n1 FAMC @VOID@\n2 PEDI OTHER\n3 PHRASE Raised by a neighbour\n",
+    );
     assert_has(&out, "1 FAMS @F2@\n2 NOTE A spouse note\n1 FAMS @F2@\n");
     let out = write_as(&data, GedcomVersion::V5_5_1);
     assert_has(
@@ -365,7 +380,10 @@ fn ordinances() {
     );
     assert!(ords[3].family.is_some());
     let out = write(&data);
-    assert_has(&out, "1 BAPL\n2 DATE 1 JAN 1900\n2 TEMP SLAKE\n2 PLAC Sample Temple\n2 STAT COMPLETED\n3 DATE 2 FEB 1990\n2 NOTE A note\n");
+    assert_has(
+        &out,
+        "1 BAPL\n2 DATE 1 JAN 1900\n2 TEMP SLAKE\n2 PLAC Sample Temple\n2 STAT COMPLETED\n3 DATE 2 FEB 1990\n2 NOTE A note\n",
+    );
     assert_has(&out, "1 SLGC\n2 STAT BIC\n3 DATE 5 MAY 1993\n2 FAMC @F1@\n");
     let out = write_as(&data, GedcomVersion::V7_0);
     assert_has(&out, "2 STAT DNS_CAN\n");
@@ -410,18 +428,20 @@ fn sources() {
     let recorded = &source.data.as_ref().unwrap().events[0];
     // 5.5.1 may name no event (found by the `model` fuzz target).
     let empty = Dataset::parse(v551("0 @S1@ SOUR\n1 DATA\n2 EVEN\n"));
-    assert!(empty
-        .sources()
-        .get(0)
-        .unwrap()
-        .into_owned()
-        .data
-        .as_ref()
-        .unwrap()
-        .events[0]
-        .kinds
-        .0
-        .is_empty());
+    assert!(
+        empty
+            .sources()
+            .get(0)
+            .unwrap()
+            .into_owned()
+            .data
+            .as_ref()
+            .unwrap()
+            .events[0]
+            .kinds
+            .0
+            .is_empty()
+    );
     assert!(oxidged::model::ledger::untyped(&empty).is_empty());
     assert_eq!(recorded.kinds.0, [EventKind::Birth, EventKind::Death]);
     let place = recorded.place.as_ref().unwrap();
@@ -436,7 +456,10 @@ fn sources() {
         2
     );
     let out = write(&data);
-    assert_has(&out, "1 DATA\n2 EVEN BIRT, DEAT\n3 DATE FROM 1800 TO 1850\n3 PLAC Sampleton\n4 FORM City\n4 MAP\n5 LATI N1.5\n5 LONG E2.5\n2 AGNC Sample parish\n2 NOTE Some pages missing\n");
+    assert_has(
+        &out,
+        "1 DATA\n2 EVEN BIRT, DEAT\n3 DATE FROM 1800 TO 1850\n3 PLAC Sampleton\n4 FORM City\n4 MAP\n5 LATI N1.5\n5 LONG E2.5\n2 AGNC Sample parish\n2 NOTE Some pages missing\n",
+    );
     assert_has(&out, "1 TEXT Transcribed\n2 MIME text/plain\n");
     assert_has(&out, "1 REPO @R1@\n2 CALN 12\n");
     assert_has(&out, "1 CREA\n2 DATE 1 JAN 2020\n");
@@ -455,7 +478,10 @@ fn multimedia_records() {
     assert_eq!(obje.citations.len(), 2);
     assert!(obje.files[0].form.as_ref().unwrap().medium_type.is_some());
     let out = write(&data);
-    assert_has(&out, "0 @O1@ OBJE\n1 FILE a.jpg\n2 FORM jpg\n3 TYPE photo\n2 TITL First\n1 FILE b.tif\n2 FORM tif\n");
+    assert_has(
+        &out,
+        "0 @O1@ OBJE\n1 FILE a.jpg\n2 FORM jpg\n3 TYPE photo\n2 TITL First\n1 FILE b.tif\n2 FORM tif\n",
+    );
     assert_has(&out, "1 SOUR @S1@\n2 PAGE 1\n1 SOUR @S1@\n2 PAGE 2\n");
     assert_has(&out, "1 OBJE\n2 FILE c.jpg\n3 FORM jpg\n4 MEDI photo\n");
 }
@@ -480,7 +506,10 @@ fn submitters_and_submissions() {
     assert!(subn.ordinance_process.is_some());
     let out = write(&data);
     assert_has(&out, "1 LANG English\n1 LANG French\n1 LANG German\n");
-    assert_has(&out, "0 @B1@ SUBN\n1 SUBM @U1@\n1 FAMF family.ged\n1 TEMP SLAKE\n1 ANCE 2\n1 DESC 3\n1 ORDI yes\n1 NOTE A submission note\n1 RIN 9\n1 CHAN\n2 DATE 1 JAN 2000\n");
+    assert_has(
+        &out,
+        "0 @B1@ SUBN\n1 SUBM @U1@\n1 FAMF family.ged\n1 TEMP SLAKE\n1 ANCE 2\n1 DESC 3\n1 ORDI yes\n1 NOTE A submission note\n1 RIN 9\n1 CHAN\n2 DATE 1 JAN 2000\n",
+    );
 }
 
 /// Shared notes: a 5.5.1 `NOTE` record and a 7.x `SNOTE` record, with
@@ -495,7 +524,10 @@ fn shared_notes() {
     assert!(note.text.eq_str(&data, "A shared note\ncontinued"));
     assert!(note.change.is_some() && note.creation.is_some());
     let out = write(&data);
-    assert_has(&out, "0 @N1@ SNOTE A shared note\n1 CONT continued\n1 MIME text/plain\n1 LANG en\n1 TRAN Une note\n2 LANG fr\n1 SOUR @S1@\n1 CHAN\n2 DATE 1 JAN 2000\n1 CREA\n2 DATE 1 JAN 1999\n");
+    assert_has(
+        &out,
+        "0 @N1@ SNOTE A shared note\n1 CONT continued\n1 MIME text/plain\n1 LANG en\n1 TRAN Une note\n2 LANG fr\n1 SOUR @S1@\n1 CHAN\n2 DATE 1 JAN 2000\n1 CREA\n2 DATE 1 JAN 1999\n",
+    );
     let out = write_as(&data, GedcomVersion::V5_5_1);
     assert_has(&out, "0 @N1@ NOTE A shared note\n1 CONT continued\n");
 
@@ -606,7 +638,9 @@ fn same_tag_order_is_kept() {
 /// writes alike (found by the `model` fuzz target).
 #[test]
 fn untyped_values_are_written_like_typed_ones() {
-    let data = Dataset::parse("0 @I1@ INDI\n1 EVEN\n2 AGE t\n2 AGE > 0m\n2 DATE 1 JAN 1900\n2 DATE @#DJULIAN@ 2 FEB 1900\n");
+    let data = Dataset::parse(
+        "0 @I1@ INDI\n1 EVEN\n2 AGE t\n2 AGE > 0m\n2 DATE 1 JAN 1900\n2 DATE @#DJULIAN@ 2 FEB 1900\n",
+    );
     for version in [
         GedcomVersion::V5_5_1,
         GedcomVersion::V7_0,
@@ -630,7 +664,9 @@ fn untyped_values_are_written_like_typed_ones() {
 /// owned structures end with it.
 #[test]
 fn a_conformant_dataset_writes_without_repairs() {
-    let data = Dataset::parse("0 HEAD\n1 SOUR Sample\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n1 SUBM @U1@\n0 @U1@ SUBM\n1 NAME Tester\n0 @I1@ INDI\n1 NAME Ann /Example/\n0 TRLR\n");
+    let data = Dataset::parse(
+        "0 HEAD\n1 SOUR Sample\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n1 SUBM @U1@\n0 @U1@ SUBM\n1 NAME Tester\n0 @I1@ INDI\n1 NAME Ann /Example/\n0 TRLR\n",
+    );
     let report = GedcomWriter::new().write(std::io::sink(), &data).unwrap();
     assert!(report.repairs.is_empty(), "{:?}", report.repairs);
     let records = data.to_structures();

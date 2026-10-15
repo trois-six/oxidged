@@ -25,9 +25,9 @@ use std::rc::Rc;
 
 use crate::spec::conform::{IdTypes, Typing};
 use crate::spec::payload::Family;
-use crate::spec::schema::{Kind, StructId, DATASET};
+use crate::spec::schema::{DATASET, Kind, StructId};
 use crate::version::VersionRules;
-use crate::writer::{emit_typed, special_bytes, LineSink};
+use crate::writer::{LineSink, emit_typed, special_bytes};
 
 /// The type of a structure not typed ([`Flat::open`]).
 const UNTYPED: StructId = StructId::MAX;
@@ -859,10 +859,10 @@ impl<'s> Flat<'s> {
             empty,
             lang: false,
         });
-        if let FlatPayload::Pointer(p, _) = &payload {
-            if typing.is_graph_pointer(st.root, ty) {
-                st.graph.push((p.clone(), ty));
-            }
+        if let FlatPayload::Pointer(p, _) = &payload
+            && typing.is_graph_pointer(st.root, ty)
+        {
+            st.graph.push((p.clone(), ty));
         }
         match (
             typing.check(ty, &payload, claim, special),

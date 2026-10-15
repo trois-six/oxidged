@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
 
-use super::tag::{standard_index, STANDARD_TAGS};
+use super::tag::{STANDARD_TAGS, standard_index};
 
 /// The deepest level a structure can have. Deeper lines are attached at this
 /// depth, as siblings, so that nothing recursive can overflow the stack.
@@ -822,10 +822,10 @@ impl Builder {
     fn pop_to(&mut self, keep: usize) {
         let end = self.len();
         while self.stack.len() > keep {
-            if let Some(open) = self.stack.pop() {
-                if let Some(n) = self.nodes.get_mut(open.node as usize) {
-                    n.end = end;
-                }
+            if let Some(open) = self.stack.pop()
+                && let Some(n) = self.nodes.get_mut(open.node as usize)
+            {
+                n.end = end;
             }
         }
     }
@@ -863,12 +863,12 @@ impl Builder {
             self.pop_for(level);
             // An identifier on a continuation names nothing a reader could
             // point to: the line continues its text all the same.
-            if tag == "CONT" || tag == "CONC" {
-                if let Some(target) = self.continuation_target(tags.intern("")) {
-                    let raw = payload.map_or(Span::default(), |(s, e)| Span::new(s, e - s));
-                    self.add_piece(target, tag == "CONT", false, raw);
-                    return;
-                }
+            if (tag == "CONT" || tag == "CONC")
+                && let Some(target) = self.continuation_target(tags.intern(""))
+            {
+                let raw = payload.map_or(Span::default(), |(s, e)| Span::new(s, e - s));
+                self.add_piece(target, tag == "CONT", false, raw);
+                return;
             }
         }
 
@@ -950,12 +950,12 @@ impl Builder {
     }
 
     fn add_piece(&mut self, target: u32, newline: bool, literal: bool, raw: Span) {
-        if let Some(n) = self.nodes.get_mut(target as usize) {
-            if n.kind == Kind::None {
-                // The payload is built when the record closes.
-                n.kind = Kind::Text;
-                n.payload = Span::default();
-            }
+        if let Some(n) = self.nodes.get_mut(target as usize)
+            && n.kind == Kind::None
+        {
+            // The payload is built when the record closes.
+            n.kind = Kind::Text;
+            n.payload = Span::default();
         }
         self.pieces.push(Piece {
             target,
@@ -972,11 +972,11 @@ impl Builder {
     fn no_level(&mut self, start: usize, end: usize, tags: &mut TagInterner) {
         let raw = Span::new(start, end - start);
         let empty_tag = tags.intern("");
-        if let Some(prev) = self.previous {
-            if self.accepts_text(prev, empty_tag) {
-                self.add_piece(prev, true, true, raw);
-                return;
-            }
+        if let Some(prev) = self.previous
+            && self.accepts_text(prev, empty_tag)
+        {
+            self.add_piece(prev, true, true, raw);
+            return;
         }
         let index = self.len();
         let mut node = RawNode {

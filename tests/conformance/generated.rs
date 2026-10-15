@@ -52,11 +52,11 @@ impl N {
         }
         out.push(' ');
         out.push_str(&self.tag);
-        if let Some(p) = &self.payload {
-            if !p.is_empty() {
-                out.push(' ');
-                out.push_str(p);
-            }
+        if let Some(p) = &self.payload
+            && !p.is_empty()
+        {
+            out.push(' ');
+            out.push_str(p);
         }
         out.push('\n');
         for c in &self.children {
@@ -223,12 +223,15 @@ impl Gen {
         // without either (records aside) gets its first substructure but a
         // phrase.
         let record = self.subs("").iter().any(|s| s.ty == ty);
-        if self.v7() && out.is_empty() && self.pay(ty) == Pay::None && !record {
-            if let Some(s) = self.subs(ty).iter().find(|s| s.tag != "PHRASE") {
-                let mut n = N::new(s.tag, self.sample(s.ty, s.tag, tag, 0));
-                n.children = self.required(s.ty, s.tag, depth + 1);
-                out.push(n);
-            }
+        if self.v7()
+            && out.is_empty()
+            && self.pay(ty) == Pay::None
+            && !record
+            && let Some(s) = self.subs(ty).iter().find(|s| s.tag != "PHRASE")
+        {
+            let mut n = N::new(s.tag, self.sample(s.ty, s.tag, tag, 0));
+            n.children = self.required(s.ty, s.tag, depth + 1);
+            out.push(n);
         }
         out
     }
@@ -538,11 +541,7 @@ fn run_probe(g: &Gen, check: &str, p: &Probe, kind_lenient: bool, failures: &mut
 }
 
 fn sup_name(sup: &str) -> &str {
-    if sup.is_empty() {
-        "ROOT"
-    } else {
-        sup
-    }
+    if sup.is_empty() { "ROOT" } else { sup }
 }
 
 /// Every placement probe of a version.
@@ -624,22 +623,22 @@ pub fn enum_probes(g: &Gen) -> Vec<(Probe, Mode)> {
                 Mode::Exact
             },
         ));
-        if !g.v7() {
-            if let Some(first) = vals.first() {
-                let mixed: String = first
-                    .chars()
-                    .enumerate()
-                    .map(|(i, c)| {
-                        if i == 0 {
-                            c.to_ascii_uppercase()
-                        } else {
-                            c.to_ascii_lowercase()
-                        }
-                    })
-                    .collect();
-                if mixed != *first {
-                    tries.push((mixed, Mode::Canonical));
-                }
+        if !g.v7()
+            && let Some(first) = vals.first()
+        {
+            let mixed: String = first
+                .chars()
+                .enumerate()
+                .map(|(i, c)| {
+                    if i == 0 {
+                        c.to_ascii_uppercase()
+                    } else {
+                        c.to_ascii_lowercase()
+                    }
+                })
+                .collect();
+            if mixed != *first {
+                tries.push((mixed, Mode::Canonical));
             }
         }
         for (v, mode) in tries {

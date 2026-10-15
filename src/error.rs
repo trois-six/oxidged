@@ -99,8 +99,10 @@ mod tests {
 
         let deviations = crate::spec::validate_text("0 HEAD\n1 GEDC\n2  VERS 7.0\n0 TRLR\n");
         let strict = GedcomError::NonConformant(deviations.into());
-        assert!(strict
-            .to_string()
-            .starts_with("the input does not conform to its specification: line 3"));
+        assert!(
+            strict
+                .to_string()
+                .starts_with("the input does not conform to its specification: line 3")
+        );
     }
 }

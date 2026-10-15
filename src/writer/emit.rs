@@ -32,7 +32,7 @@ use std::rc::Rc;
 
 use super::{OutputEncoding, Repair, RepairKind, RepairPolicy, Unencodable, WriteError};
 use crate::tree::PayloadRef;
-use crate::version::{AtEscape, VersionRules, XrefGrammar, MAX_TAG_551};
+use crate::version::{AtEscape, MAX_TAG_551, VersionRules, XrefGrammar};
 
 /// The buffered bytes are handed to the writer once they exceed this size.
 const FLUSH_AT: usize = 64 * 1024;
@@ -1318,7 +1318,7 @@ pub(crate) fn new_xref(rules: &VersionRules, xref: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::{V551, V70};
+    use crate::version::{V70, V551};
 
     fn lines(rules: &VersionRules, level: usize, tag: &str, payload: PayloadRef<'_>) -> String {
         let mut sink = LineSink::buffer(rules, RepairPolicy::Repair);

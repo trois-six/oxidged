@@ -9,8 +9,8 @@
 use std::io::{BufReader, Read};
 
 use libfuzzer_sys::fuzz_target;
-use oxidged::encoding::{decode, DecodeReader};
-use oxidged::tree::{parse_tree, Structure, Tree, TreeReader};
+use oxidged::encoding::{DecodeReader, decode};
+use oxidged::tree::{Structure, Tree, TreeReader, parse_tree};
 
 /// The bytes a stream reads to choose the decoding.
 const WINDOW: usize = 64 * 1024;

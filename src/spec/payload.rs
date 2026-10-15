@@ -6,10 +6,10 @@
 
 use std::borrow::Cow;
 
+use crate::GedcomVersion;
 use crate::value::{AgeValue, DateExact, DatePeriod, DateValue, Grammar, Time};
 use crate::version::VersionRules;
-use crate::writer::{special_bytes, CONTROL, MAYBE_BANNED, TAB};
-use crate::GedcomVersion;
+use crate::writer::{CONTROL, MAYBE_BANNED, TAB, special_bytes};
 
 use super::schema::{EnumSet, Kind};
 
@@ -799,7 +799,7 @@ mod tests {
 
     #[test]
     fn banned_characters() {
-        use crate::version::{V551, V70};
+        use crate::version::{V70, V551};
         assert!(is_banned('\u{7}', &V70));
         assert!(!is_banned('\t', &V70));
         assert!(is_banned('\t', &V551));
@@ -811,7 +811,7 @@ mod tests {
 
     #[test]
     fn banned_characters_by_bytes() {
-        use crate::version::{V551, V70};
+        use crate::version::{V70, V551};
         for rules in [&V551, &V70] {
             for c in [
                 'a', 'é', '\t', '\n', '\r', '\u{7}', '\u{7f}', '\u{85}', '\u{a0}', '\u{fffd}',

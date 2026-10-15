@@ -32,20 +32,20 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use super::clean::Walk;
-use super::cycles::{streamed_pointers, Found};
+use super::cycles::{Found, streamed_pointers};
 use super::{
-    bump, encoded_len, extension_tags, insert_records, Aliases, Body, Conformer, Family,
-    FieldOrder, Named, Rec, RecRef, RepairKind, StructId, DATASET,
+    Aliases, Body, Conformer, DATASET, Family, FieldOrder, Named, Rec, RecRef, RepairKind,
+    StructId, bump, encoded_len, extension_tags, insert_records,
 };
+use crate::GedcomVersion;
 use crate::convert::Watch;
 use crate::model::{Dataset, RecordKind, Store, XrefId};
 use crate::spec::graph::{Graph, Pointer};
-use crate::spec::validate::{xref_error, MAX_RECORD_BYTES};
+use crate::spec::validate::{MAX_RECORD_BYTES, xref_error};
 use crate::tree::{Flat, FlatPayload, FlatRef, Node, Stream, Structure, Xref};
 use crate::writer::{
-    complete_head, needs_submitter, new_xref, numbered_xref, stub_submitter, LineSink,
+    LineSink, complete_head, needs_submitter, new_xref, numbered_xref, stub_submitter,
 };
-use crate::GedcomVersion;
 
 #[cfg(test)]
 thread_local! {

@@ -29,7 +29,7 @@
 //! record and no cycle of pointers between sources and multimedia objects
 //! or shared notes.
 
-use super::spec_tables::{Cal, Pay, Spec, Sub, V551, V70, V71};
+use super::spec_tables::{Cal, Pay, Spec, Sub, V70, V71, V551};
 use super::tree::{self, Node, Payload, Version};
 use std::collections::{HashMap, HashSet};
 
@@ -571,14 +571,14 @@ fn check_pointer_cycles(records: &[Node], issues: &mut Vec<Issue>) {
         let Some(x) = r.xref.as_deref() else { continue };
         if r.tag == "INDI" {
             for a in r.children.iter().filter(|c| c.tag == "ALIA") {
-                if let Payload::Pointer(p) = &a.payload {
-                    if p == x {
-                        issues.push(Issue {
-                            rule: "alia-self",
-                            line: a.line,
-                            detail: p.clone(),
-                        });
-                    }
+                if let Payload::Pointer(p) = &a.payload
+                    && p == x
+                {
+                    issues.push(Issue {
+                        rule: "alia-self",
+                        line: a.line,
+                        detail: p.clone(),
+                    });
                 }
             }
         }
@@ -764,10 +764,10 @@ fn check_payload(n: &Node, ty: &str, pay: Pay, cx: &Cx<'_>, issues: &mut Vec<Iss
         Payload::Pointer(p) => {
             match pay {
                 Pay::Ptr(to) => {
-                    if let Some(actual) = cx.record_types.get(p.as_str()) {
-                        if *actual != to {
-                            bad("pointer-target", &format!("points to {actual}, not {to}"));
-                        }
+                    if let Some(actual) = cx.record_types.get(p.as_str())
+                        && *actual != to
+                    {
+                        bad("pointer-target", &format!("points to {actual}, not {to}"));
                     }
                 }
                 _ => bad(
@@ -964,11 +964,11 @@ fn date70_simple(t: &[&str], spec: &Spec) -> bool {
     }
     // Optional epoch at the end.
     let mut epoch_ok = true;
-    if let Some(last) = t.last() {
-        if !digits(last) {
-            epoch_ok = ext_cal || cal.is_some_and(|c| c.epochs.contains(last)) || ext_tag(last);
-            t = &t[..t.len() - 1];
-        }
+    if let Some(last) = t.last()
+        && !digits(last)
+    {
+        epoch_ok = ext_cal || cal.is_some_and(|c| c.epochs.contains(last)) || ext_tag(last);
+        t = &t[..t.len() - 1];
     }
     let month_ok = |m: &str| ext_cal || ext_tag(m) || cal.is_some_and(|c| c.months.contains(&m));
     epoch_ok

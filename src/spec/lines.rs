@@ -98,7 +98,7 @@ fn split(raw: &str, family: Family) -> Result<Parts<'_>, (DeviationKind, String)
             return Err((
                 DeviationKind::LineSyntax,
                 "one space, and nothing else, after the tag".into(),
-            ))
+            ));
         }
         _ => Some(after.get(1..).unwrap_or("")),
     };
@@ -279,14 +279,14 @@ impl<'t> Checker<'t> {
         continuation(&mut self.out, &mut self.open, parts, line_no, self.family);
         if let Some(raw) = parts.payload.filter(|p| !p.is_empty()) {
             let cont = matches!(parts.tag, "CONT" | "CONC");
-            if cont || !is_pointer(raw) {
-                if let Some(why) = escape_error(raw, self.family) {
-                    self.push(
-                        line_no,
-                        DeviationKind::Escape,
-                        format!("{} {raw:?}: {why}", parts.tag),
-                    );
-                }
+            if (cont || !is_pointer(raw))
+                && let Some(why) = escape_error(raw, self.family)
+            {
+                self.push(
+                    line_no,
+                    DeviationKind::Escape,
+                    format!("{} {raw:?}: {why}", parts.tag),
+                );
             }
         }
     }

@@ -6,7 +6,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use oxidged::spec::{conform, validate, validate_bytes, DeviationKind};
+use oxidged::spec::{DeviationKind, conform, validate, validate_bytes};
 use oxidged::tree::Tree;
 use oxidged::{Bom, GedcomVersion, GedcomWriter};
 

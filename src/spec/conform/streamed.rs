@@ -25,8 +25,9 @@ use std::borrow::Cow;
 use std::rc::Rc;
 
 use super::clean::Walk;
-use super::cycles::{streamed_pointers, Found};
-use super::{bump, encoded_len, Aliases, Conformer, Family, StructId, Typing, DATASET};
+use super::cycles::{Found, streamed_pointers};
+use super::{Aliases, Conformer, DATASET, Family, StructId, Typing, bump, encoded_len};
+use crate::GedcomVersion;
 use crate::convert::Watch;
 use crate::spec::conform::Build;
 use crate::spec::graph::{Graph, Pointer};
@@ -34,8 +35,7 @@ use crate::spec::validate::MAX_RECORD_BYTES;
 use crate::tree::Node;
 use crate::tree::{Flat, Stream, StreamBuffers, Structure};
 use crate::writer::LineSink;
-use crate::writer::{complete_head, needs_submitter, Repair, RepairKind};
-use crate::GedcomVersion;
+use crate::writer::{Repair, RepairKind, complete_head, needs_submitter};
 
 /// The state of records written one at a time: see the [module
 /// documentation](self).
@@ -106,13 +106,13 @@ impl Streamed {
             }
         };
         complete(&c, head);
-        if let Some(ty) = head_ty {
-            if !c.is_clean(&*head, ty, true) {
-                c.path.clear();
-                let _ = c.fix(head, ty, true);
-                c.model_order(head, ty);
-                complete(&c, head);
-            }
+        if let Some(ty) = head_ty
+            && !c.is_clean(&*head, ty, true)
+        {
+            c.path.clear();
+            let _ = c.fix(head, ty, true);
+            c.model_order(head, ty);
+            complete(&c, head);
         }
         this.aliases = Aliases::of(Some(&*head), c.schema);
         this.repairs = c.repairs;
@@ -193,10 +193,10 @@ impl Streamed {
         let mut flat = Flat::default();
         flat.set_typing(Some(typing));
         record.build(&mut flat);
-        if let (Some(w), Some(root)) = (watch, flat.root()) {
-            if w.needs(root) {
-                return Outcome::Convert;
-            }
+        if let (Some(w), Some(root)) = (watch, flat.root())
+            && w.needs(root)
+        {
+            return Outcome::Convert;
         }
         let mut walk = Walk::default();
         let clean = c.is_clean_written(&flat, &mut walk);

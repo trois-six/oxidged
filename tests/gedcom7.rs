@@ -175,8 +175,11 @@ fn the_7_1_header_has_a_title_and_a_description() {
         text(&data, &header.description.as_ref().unwrap().text),
         "Descendants of Ann Example"
     );
-    assert!(write(&data)
-        .contains("1 TITL The Example family\n2 LANG en\n2 TRAN La famille Example\n3 LANG fr\n"));
+    assert!(
+        write(&data).contains(
+            "1 TITL The Example family\n2 LANG en\n2 TRAN La famille Example\n3 LANG fr\n"
+        )
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -239,12 +242,14 @@ fn snote_pointers_and_note_texts() {
     let shared = data.store().find_xref("@N1@").unwrap();
     assert_eq!(notes[0].content, NoteContent::Shared(shared));
     assert!(matches!(&notes[1].content, NoteContent::Text(t) if t.eq_str(&data, "Own text")));
-    assert!(notes[1]
-        .detail()
-        .mime
-        .as_ref()
-        .unwrap()
-        .eq_str(&data, "text/plain"));
+    assert!(
+        notes[1]
+            .detail()
+            .mime
+            .as_ref()
+            .unwrap()
+            .eq_str(&data, "text/plain")
+    );
     assert!(data.dangling_references().is_empty());
 
     let out = write(&data);
@@ -326,13 +331,14 @@ fn individual_non_events() {
     assert_eq!(text(&data, &date.value), "TO 1900");
     assert_eq!(text(&data, date.phrase.as_ref().unwrap()), "Before the war");
     assert_eq!(no.notes.len(), 1);
-    assert!(data
-        .individuals()
-        .get(0)
-        .unwrap()
-        .into_owned()
-        .events
-        .is_empty());
+    assert!(
+        data.individuals()
+            .get(0)
+            .unwrap()
+            .into_owned()
+            .events
+            .is_empty()
+    );
 
     assert!(write(&data).contains("1 NO MARR\n2 DATE TO 1900\n3 PHRASE Before the war\n"));
 }
@@ -380,8 +386,10 @@ fn date_phrases() {
 
     assert!(write(&data).contains("2 DATE 15 MAR 1820\n3 PHRASE The Ides of March, 1820\n"));
     // 5.5.1 words the date as an interpreted date.
-    assert!(write_as(&data, GedcomVersion::V5_5_1)
-        .contains("2 DATE INT 15 MAR 1820 (The Ides of March, 1820)\n"));
+    assert!(
+        write_as(&data, GedcomVersion::V5_5_1)
+            .contains("2 DATE INT 15 MAR 1820 (The Ides of March, 1820)\n")
+    );
 }
 
 #[test]
@@ -478,12 +486,14 @@ fn name_and_file_translations() {
     assert_eq!(text(&data, &file.path), "media/portrait.jpg");
     let small = &file.translations[0];
     assert_eq!(text(&data, &small.path), "media/portrait-small.jpg");
-    assert!(small
-        .form
-        .as_ref()
-        .unwrap()
-        .format
-        .eq_str(&data, "image/jpeg"));
+    assert!(
+        small
+            .form
+            .as_ref()
+            .unwrap()
+            .format
+            .eq_str(&data, "image/jpeg")
+    );
 
     let out = write(&data);
     assert!(out.contains("2 TRAN Анна /Пример/\n3 LANG ru\n3 GIVN Анна\n"));
@@ -594,12 +604,10 @@ fn initiatory_is_read_in_7_0() {
 
 #[test]
 fn sealings_of_children_and_spouses() {
-    let data = Dataset::parse(v7(
-        "0 @I1@ INDI\n1 NAME Cid /Example/\n\
+    let data = Dataset::parse(v7("0 @I1@ INDI\n1 NAME Cid /Example/\n\
          1 SLGC\n2 DATE 20 MAR 1995\n2 TEMP SLAKE\n2 FAMC @F1@\n2 STAT COMPLETED\n3 DATE 21 MAR 1995\n\
          0 @F1@ FAM\n1 CHIL @I1@\n\
-         1 SLGS\n2 DATE 25 DEC 1990\n2 TEMP SLAKE\n2 STAT COMPLETED\n3 DATE 26 DEC 1990\n",
-    ));
+         1 SLGS\n2 DATE 25 DEC 1990\n2 TEMP SLAKE\n2 STAT COMPLETED\n3 DATE 26 DEC 1990\n"));
     let slgc_record = data.individuals().get(0).unwrap().into_owned();
     let slgc = &slgc_record.detail().ordinances[0];
     assert_eq!(slgc.kind, OrdinanceKind::ChildSealing);
@@ -670,8 +678,10 @@ fn only_a_leading_at_sign_is_doubled_in_7_0() {
     let out = write(&data);
     assert!(out.contains("1 NOTE @@ref and ann@example.com\n1 NOTE a@@b\n"));
     // 5.5.1 doubles every at sign.
-    assert!(write_as(&data, GedcomVersion::V5_5_1)
-        .contains("1 NOTE @@ref and ann@@example.com\n1 NOTE a@@@@b\n"));
+    assert!(
+        write_as(&data, GedcomVersion::V5_5_1)
+            .contains("1 NOTE @@ref and ann@@example.com\n1 NOTE a@@@@b\n")
+    );
 }
 
 #[test]
@@ -706,16 +716,20 @@ fn structures_of_the_other_version_are_kept_and_strict_mode_refuses_them() {
             .len(),
         1
     );
-    assert!(GedcomBuilder::new()
-        .strict(true)
-        .build_from_str(text)
-        .is_err());
+    assert!(
+        GedcomBuilder::new()
+            .strict(true)
+            .build_from_str(text)
+            .is_err()
+    );
     // The same structure in 7.0 is conformant.
     let v70 = v7("0 @I1@ INDI\n1 NO MARR\n");
-    assert!(GedcomBuilder::new()
-        .strict(true)
-        .build_from_str(v70)
-        .is_ok());
+    assert!(
+        GedcomBuilder::new()
+            .strict(true)
+            .build_from_str(v70)
+            .is_ok()
+    );
 }
 
 #[test]
@@ -753,7 +767,7 @@ fn structures_5_5_1_lacks_are_written_to_it_as_extensions() {
 /// writes the records, and the output reads back and writes as it is.
 #[test]
 fn pointer_cycles_7_0_17_are_read_and_cut_on_write() {
-    use oxidged::spec::{validate_text, DeviationKind};
+    use oxidged::spec::{DeviationKind, validate_text};
     let input = v7(
         "0 @I1@ INDI\n1 ALIA @I1@\n1 ALIA @I2@\n0 @I2@ INDI\n1 ALIA @I1@\n\
          0 @N1@ SNOTE Transcribed from the register\n1 SOUR @S1@\n\

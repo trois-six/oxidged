@@ -74,13 +74,13 @@ pub use xref::{Xref, XrefForm};
 
 pub(crate) use flat::{Flat, FlatPayload, FlatRef, Stream, StreamBuffers, UNKNOWN};
 pub(crate) use lexer::{
-    find_eol, head_version, lex_line, pointer, terminator_len, unescape_into, unescape_spans,
-    Builder, Escaping, Kind as RawKind, Line, Lines, RawNode, Span as RawSpan, TagHasher,
-    TagInterner, TextPiece, MAX_DEPTH,
+    Builder, Escaping, Kind as RawKind, Line, Lines, MAX_DEPTH, RawNode, Span as RawSpan,
+    TagHasher, TagInterner, TextPiece, find_eol, head_version, lex_line, pointer, terminator_len,
+    unescape_into, unescape_spans,
 };
 pub(crate) use node::Node;
 pub(crate) use reader::RecordSource;
-pub(crate) use tag::{standard_index, standard_index_const, STANDARD_TAGS};
+pub(crate) use tag::{STANDARD_TAGS, standard_index, standard_index_const};
 pub(crate) use write::line as write_line;
 
 use std::fmt;

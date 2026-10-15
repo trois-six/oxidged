@@ -13,7 +13,7 @@
 //! seeds, no dependency), and, opt-in, on the fetched corpora and on a
 //! fuzz corpus.
 
-use oxidged::spec::{conform, validate, DeviationKind};
+use oxidged::spec::{DeviationKind, conform, validate};
 use oxidged::tree::{Payload, Structure, Tag, Tree, Xref};
 use oxidged::{Bom, Dataset, GedcomVersion, GedcomWriter};
 use std::path::{Path, PathBuf};
@@ -411,7 +411,7 @@ fn every_fuzz_input_conforms() {
 /// path).
 #[test]
 fn the_tree_writer_conforms() {
-    use oxidged::spec::{validate_text, RepairKind};
+    use oxidged::spec::{RepairKind, validate_text};
     use oxidged::{GedcomWriter, RepairPolicy};
     for (input, kept) in [
         (

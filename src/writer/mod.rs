@@ -63,7 +63,7 @@ use crate::convert::{ConversionOptions, Plan};
 use crate::model::Dataset;
 use crate::model::Store;
 use crate::spec::conform::{
-    conform_records, take_head, with_node, Build, Direct, FieldOrder, Place, Rec, RecRef,
+    Build, Direct, FieldOrder, Place, Rec, RecRef, conform_records, take_head, with_node,
 };
 use crate::tree::{Flat, FlatRef, Node, PayloadRef, Structure, Tree};
 use crate::version::{GedcomVersion, VersionRules};
@@ -71,12 +71,12 @@ use emit::{emit, emit_known, emit_tagged};
 use xref::XrefMap;
 
 pub(crate) use emit::{
-    emit_typed, extension_tag, is_valid_pointer, new_xref, special_bytes, LineSink, Looker,
-    AT_SIGN, CONTROL, LINE_FEED, MAYBE_BANNED, TAB,
+    AT_SIGN, CONTROL, LINE_FEED, LineSink, Looker, MAYBE_BANNED, TAB, emit_typed, extension_tag,
+    is_valid_pointer, new_xref, special_bytes,
 };
-pub(crate) use head::{complete as complete_head, needs_submitter, stub_submitter, PLACEHOLDER};
+pub(crate) use head::{PLACEHOLDER, complete as complete_head, needs_submitter, stub_submitter};
 pub use stream::GedcomStreamWriter;
-pub(crate) use xref::{numbered_xref, XrefIndex};
+pub(crate) use xref::{XrefIndex, numbered_xref};
 
 /// The line terminator of written files.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -549,12 +549,12 @@ impl GedcomWriter {
         }
         let rules = self.interpretation(data);
         let interprets = rules.is_some();
-        if let Some(rules) = rules.filter(|_| !self.drops_credentials(data)) {
-            if let Some((sink, report)) = self.interpreting(data, rules, None)? {
-                writer.write_all(&sink.into_bytes())?;
-                writer.flush()?;
-                return Ok(report);
-            }
+        if let Some(rules) = rules.filter(|_| !self.drops_credentials(data))
+            && let Some((sink, report)) = self.interpreting(data, rules, None)?
+        {
+            writer.write_all(&sink.into_bytes())?;
+            writer.flush()?;
+            return Ok(report);
         }
         if let Some((records, mut report, typed)) = self.rewritten(data, interprets) {
             let more = self.write_rewritten(writer, &records, data, typed)?;
@@ -1038,14 +1038,13 @@ impl GedcomWriter {
         store: Option<&'n Store>,
         whole: Option<&'n Dataset>,
     ) -> Result<WriteReport, WriteError> {
-        if let Some(store) = store {
-            if let Some((sink, report)) =
+        if let Some(store) = store
+            && let Some((sink, report)) =
                 self.direct_built(built, order, store, None, None, whole, None)?
-            {
-                writer.write_all(&sink.into_bytes())?;
-                writer.flush()?;
-                return Ok(report);
-            }
+        {
+            writer.write_all(&sink.into_bytes())?;
+            writer.flush()?;
+            return Ok(report);
         }
         let records: Vec<Rec<'n, &'n Structure>> = built.iter().map(|r| Rec::built(r)).collect();
         let rules = self.rules_for_built(&records);
@@ -1084,10 +1083,10 @@ impl GedcomWriter {
         });
         // The header converted.
         let watch = watch.map(|Unconverted { watch, head }| {
-            if let Some((at, head)) = head {
-                if let Some(r) = records.get_mut(at) {
-                    *r = Rec::owned(head);
-                }
+            if let Some((at, head)) = head
+                && let Some(r) = records.get_mut(at)
+            {
+                *r = Rec::owned(head);
             }
             watch
         });
@@ -1588,10 +1587,10 @@ fn write_direct<'n>(
                 (Place::Record, None) | (Place::Lines, _) => return Ok(None),
             }
         }
-        if let Some(looker) = &looker {
-            if !looker.borrow_mut().end(i, place == Place::Record) {
-                return Ok(None);
-            }
+        if let Some(looker) = &looker
+            && !looker.borrow_mut().end(i, place == Place::Record)
+        {
+            return Ok(None);
         }
     }
     out.sink.source_line = 0;
@@ -1643,15 +1642,13 @@ fn place_record<'n>(
             }
             _ => None,
         };
-        if lent {
-            if let Some(lines) = direct.lines() {
-                let keep = place == Some(Place::Lines);
-                #[cfg(debug_assertions)]
-                if keep {
-                    assert_lines(out.rules, out, xrefs, record, i - 1, lines);
-                }
-                out.sink.take_back(lines, keep);
+        if lent && let Some(lines) = direct.lines() {
+            let keep = place == Some(Place::Lines);
+            #[cfg(debug_assertions)]
+            if keep {
+                assert_lines(out.rules, out, xrefs, record, i - 1, lines);
             }
+            out.sink.take_back(lines, keep);
         }
         match alone {
             Some(s) => {

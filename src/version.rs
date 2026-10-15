@@ -23,7 +23,7 @@
 //! - URIs for all structure types
 
 use crate::spec::index::{self, SchemaIndex};
-use crate::spec::{tables, Schema};
+use crate::spec::{Schema, tables};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::fmt;

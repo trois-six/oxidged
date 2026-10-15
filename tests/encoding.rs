@@ -4,7 +4,7 @@
 //! order mark, the bytes and `HEAD.CHAR`; and the encoder. Every name and
 //! place is fictitious.
 
-use oxidged::encoding::{decode, detect_encoding, encode, GedcomEncoding};
+use oxidged::encoding::{GedcomEncoding, decode, detect_encoding, encode};
 use oxidged::model::NoteContent;
 use oxidged::{Dataset, GedcomBuilder, GedcomError};
 

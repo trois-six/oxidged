@@ -23,7 +23,7 @@ mod direct;
 pub(crate) use direct::ID_PASSES;
 pub(crate) mod streamed;
 
-pub(crate) use direct::{take_head, Direct, IdTypes, Place};
+pub(crate) use direct::{Direct, IdTypes, Place, take_head};
 
 use clean::Walk;
 
@@ -31,19 +31,19 @@ use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 use super::index::SchemaIndex;
-use super::payload::{self, is_ext_tag, Family};
-use super::schema::{tag_index, Kind, Schema, StructId, DATASET};
+use super::payload::{self, Family, is_ext_tag};
+use super::schema::{DATASET, Kind, Schema, StructId, tag_index};
 use super::validate::{
-    encoded_len, is_external_pointer, pick, xref_error, Aliases, Pick, Picker, MAX_RECORD_BYTES,
+    Aliases, MAX_RECORD_BYTES, Pick, Picker, encoded_len, is_external_pointer, pick, xref_error,
 };
+use crate::GedcomVersion;
 use crate::tree::node::identifiers;
 use crate::tree::{Flat, FlatPayload, FlatRef, Node, Payload, PayloadRef, Structure, Tag, Xref};
 use crate::version::VersionRules;
 use crate::writer::{
-    complete_head, extension_tag, needs_submitter, new_xref, numbered_xref, stub_submitter, Repair,
-    RepairKind, XrefIndex, PLACEHOLDER,
+    PLACEHOLDER, Repair, RepairKind, XrefIndex, complete_head, extension_tag, needs_submitter,
+    new_xref, numbered_xref, stub_submitter,
 };
-use crate::GedcomVersion;
 
 /// The most passes [`conform`] makes; each one after the first only follows
 /// up on records that became extensions.
@@ -812,7 +812,7 @@ impl Typing {
     /// The required substructures of a type: the tag (an index in the
     /// tables' tags) and the fewest occurrences.
     #[inline]
-    pub(crate) fn required(&self, ty: StructId) -> impl Iterator<Item = (u8, u8)> + 'static {
+    pub(crate) fn required(&self, ty: StructId) -> impl Iterator<Item = (u8, u8)> + use<> {
         self.tables.required(ty).map(|c| (c.tag, c.min))
     }
 
@@ -1361,16 +1361,16 @@ impl<'n> Conformer<'n> {
                 }
                 let t = self.schema.tag_id(ty).unwrap_or(0);
                 let n = bump(counts, t);
-                if let Some(max) = self.picker.max(DATASET, t) {
-                    if n > u32::from(max) {
-                        self.repair(
+                if let Some(max) = self.picker.max(DATASET, t)
+                    && n > u32::from(max)
+                {
+                    self.repair(
                             r.line,
                             RepairKind::Repeated,
                             format!("a {tag} record more than the {max} permitted, written as an extension record"),
                         );
-                        self.make_extension(r);
-                        return;
-                    }
+                    self.make_extension(r);
+                    return;
                 }
                 self.model_order(r, ty);
             }
@@ -1417,14 +1417,14 @@ impl<'n> Conformer<'n> {
                 "a second HEAD written as a _HEAD record".into(),
             );
         }
-        if let Some(head) = records.first_mut().filter(|h| h.xref().is_some()) {
-            if let Some(x) = head.make_owned(&self.arena).xref.take() {
-                self.repair(
-                    head.line(),
-                    RepairKind::Xref,
-                    format!("identifier {x} of HEAD left out"),
-                );
-            }
+        if let Some(head) = records.first_mut().filter(|h| h.xref().is_some())
+            && let Some(x) = head.make_owned(&self.arena).xref.take()
+        {
+            self.repair(
+                head.line(),
+                RepairKind::Xref,
+                format!("identifier {x} of HEAD left out"),
+            );
         }
         let trailers: Vec<usize> = records
             .iter()
@@ -2073,10 +2073,10 @@ impl<'n> Conformer<'n> {
             .flatten();
         match (kind, set) {
             (Kind::Enum, Some(set)) if !raw.is_empty() => {
-                return self.enumeration(s, ty, set, &raw, &here)
+                return self.enumeration(s, ty, set, &raw, &here);
             }
             (Kind::ListEnum, Some(set)) if !raw.is_empty() => {
-                return self.list(s, set, &raw, &here)
+                return self.list(s, set, &raw, &here);
             }
             _ => {}
         }

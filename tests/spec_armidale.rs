@@ -8,7 +8,7 @@
 //! data. Where Armidale and the specification disagree, the specification
 //! wins and the case says why ([`Expect::Departure`]).
 
-use oxidged::spec::{validate_bytes, validate_text, Deviation, DeviationKind as K};
+use oxidged::spec::{Deviation, DeviationKind as K, validate_bytes, validate_text};
 use std::path::Path;
 
 /// What a case expects.
@@ -51,11 +51,7 @@ fn additions(v: V) -> &'static str {
 }
 
 fn extra(v: V) -> u32 {
-    if v == V::V551 {
-        6
-    } else {
-        0
-    }
+    if v == V::V551 { 6 } else { 0 }
 }
 
 /// `VERS` and the additions, as the helpers concatenate them.
@@ -953,7 +949,9 @@ fn armidale_test_files() {
     let cases: Vec<(&str, Expect)> = vec![
         (
             "5/atsign.ged",
-            any_at("5.5.1 text holds @ only doubled, or in an @#…@ escape (any_char, line_item, p. 12)"),
+            any_at(
+                "5.5.1 text holds @ only doubled, or in an @#…@ escape (any_char, line_item, p. 12)",
+            ),
         ),
         ("5/char_ascii_1.ged", Valid),
         ("5/char_ascii_2.ged", Invalid(Some(7), &[K::EnumValue])),

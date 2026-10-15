@@ -113,22 +113,23 @@ pub fn compare_trees(
     let mut map: HashMap<String, String> = HashMap::new();
     let mut used: HashSet<String> = HashSet::new();
     for r in &cb {
-        if let Some(x) = &r.xref {
-            if let Some(cands) = by_label.get_mut(&(r.tag.clone(), lb[x])) {
-                if let Some(pos) = cands.iter().position(|c| !used.contains(c)) {
-                    let c = cands.remove(pos);
-                    used.insert(c.clone());
-                    map.insert(x.clone(), c);
-                }
-            }
+        if let Some(x) = &r.xref
+            && let Some(cands) = by_label.get_mut(&(r.tag.clone(), lb[x]))
+            && let Some(pos) = cands.iter().position(|c| !used.contains(c))
+        {
+            let c = cands.remove(pos);
+            used.insert(c.clone());
+            map.insert(x.clone(), c);
         }
     }
     for r in &cb {
-        if let Some(x) = &r.xref {
-            if !map.contains_key(x) && a_xrefs.contains(x) && !used.contains(x) {
-                used.insert(x.clone());
-                map.insert(x.clone(), x.clone());
-            }
+        if let Some(x) = &r.xref
+            && !map.contains_key(x)
+            && a_xrefs.contains(x)
+            && !used.contains(x)
+        {
+            used.insert(x.clone());
+            map.insert(x.clone(), x.clone());
         }
     }
     let own: HashSet<String> = cb.iter().filter_map(|r| r.xref.clone()).collect();
@@ -181,11 +182,10 @@ pub fn lost(input: &str, output: &str) -> Vec<String> {
                 *m.entry(format!("tag {tag}")).or_default() += 1;
                 if let Payload::Text(s) = &n.payload {
                     let mut s: String = s.chars().filter(|c| !is_banned(*c)).collect();
-                    if tag == "DATE" {
-                        if let Some(phrase) = s.strip_prefix('(').and_then(|r| r.strip_suffix(')'))
-                        {
-                            s = phrase.to_string();
-                        }
+                    if tag == "DATE"
+                        && let Some(phrase) = s.strip_prefix('(').and_then(|r| r.strip_suffix(')'))
+                    {
+                        s = phrase.to_string();
                     }
                     let mut s = normalise_value(&tag, &s, v);
                     let parent = path.len().checked_sub(2).and_then(|i| path.get(i));
@@ -223,12 +223,12 @@ pub fn is_banned(c: char) -> bool {
 
 fn canonical(records: &[Node], v: Version, opts: &Options) -> Vec<Node> {
     let mut schma: HashMap<String, String> = HashMap::new();
-    if let Some(head) = records.iter().find(|r| r.tag == "HEAD") {
-        if let Some(s) = head.child("SCHMA") {
-            for t in s.children_tagged("TAG") {
-                if let Some((tag, uri)) = t.payload.as_str().split_once(' ') {
-                    schma.insert(tag.to_string(), uri.trim().to_string());
-                }
+    if let Some(head) = records.iter().find(|r| r.tag == "HEAD")
+        && let Some(s) = head.child("SCHMA")
+    {
+        for t in s.children_tagged("TAG") {
+            if let Some((tag, uri)) = t.payload.as_str().split_once(' ') {
+                schma.insert(tag.to_string(), uri.trim().to_string());
             }
         }
     }
@@ -621,15 +621,14 @@ fn inline_single_use_notes(records: &mut Vec<Node>) {
     records.retain(|r| r.xref.as_ref().is_none_or(|x| !single.contains_key(x)));
     fn inline(n: &mut Node, single: &HashMap<String, Node>) {
         for c in &mut n.children {
-            if c.tag == "SNOTE" {
-                if let Payload::Pointer(p) = &c.payload {
-                    if let Some(rec) = single.get(p) {
-                        c.tag = "NOTE".into();
-                        c.payload = rec.payload.clone();
-                        c.children.extend(rec.children.iter().cloned());
-                        c.children.sort_by(|a, b| a.tag.cmp(&b.tag));
-                    }
-                }
+            if c.tag == "SNOTE"
+                && let Payload::Pointer(p) = &c.payload
+                && let Some(rec) = single.get(p)
+            {
+                c.tag = "NOTE".into();
+                c.payload = rec.payload.clone();
+                c.children.extend(rec.children.iter().cloned());
+                c.children.sort_by(|a, b| a.tag.cmp(&b.tag));
             }
             inline(c, single);
         }
@@ -857,7 +856,9 @@ mod tests {
     fn armidale_name_pieces(kind: &str) -> String {
         let pieces = ["NPFX", "GIVN", "NICK", "SPFX", "SURN", "NSFX"];
         let stems = ["npfx", "givn", "nick", "spfx", "surn", "nsfx"];
-        let mut s = format!("{H7}0 @I1@ INDI\n1 NAME npfx1 npfx2 givn1 givn2 nick1 nick2 /spfx1 spfx2 surn1 surn2/ nsfx1 nsfx2\n");
+        let mut s = format!(
+            "{H7}0 @I1@ INDI\n1 NAME npfx1 npfx2 givn1 givn2 nick1 nick2 /spfx1 spfx2 surn1 surn2/ nsfx1 nsfx2\n"
+        );
         for (p, st) in pieces.iter().zip(stems) {
             match kind {
                 "single" => s += &format!("2 {p} {st}1 {st}2\n"),
@@ -900,7 +901,9 @@ mod tests {
         );
         assert!(compare(&note, &snote, &Options::conversion()).is_empty());
         assert!(!compare(&note, &snote, &Options::exact_head()).is_empty());
-        let shared = format!("{H7}0 @I1@ INDI\n1 SNOTE @N1@\n0 @I2@ INDI\n1 SNOTE @N1@\n0 @N1@ SNOTE A shared note\n0 TRLR\n");
+        let shared = format!(
+            "{H7}0 @I1@ INDI\n1 SNOTE @N1@\n0 @I2@ INDI\n1 SNOTE @N1@\n0 @N1@ SNOTE A shared note\n0 TRLR\n"
+        );
         let inlined = format!(
             "{H7}0 @I1@ INDI\n1 NOTE A shared note\n0 @I2@ INDI\n1 NOTE A shared note\n0 TRLR\n"
         );
@@ -909,8 +912,12 @@ mod tests {
 
     #[test]
     fn conversion_551_note_record_equals_snote() {
-        let a = format!("{H5}0 @I1@ INDI\n1 NOTE @N1@\n0 @I2@ INDI\n1 NOTE @N1@\n0 @N1@ NOTE Shared\n1 CONC  text\n0 TRLR");
-        let b = format!("{H7}0 @I1@ INDI\n1 SNOTE @N1@\n0 @I2@ INDI\n1 SNOTE @N1@\n0 @N1@ SNOTE Shared text\n0 TRLR");
+        let a = format!(
+            "{H5}0 @I1@ INDI\n1 NOTE @N1@\n0 @I2@ INDI\n1 NOTE @N1@\n0 @N1@ NOTE Shared\n1 CONC  text\n0 TRLR"
+        );
+        let b = format!(
+            "{H7}0 @I1@ INDI\n1 SNOTE @N1@\n0 @I2@ INDI\n1 SNOTE @N1@\n0 @N1@ SNOTE Shared text\n0 TRLR"
+        );
         assert_eq!(
             compare(&a, &b, &Options::conversion()),
             Vec::<String>::new()

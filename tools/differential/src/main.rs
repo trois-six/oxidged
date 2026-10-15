@@ -53,7 +53,7 @@ fn published(bytes: &[u8]) -> Result<String, String> {
 /// composes them (Unicode NFC over the ANSEL repertoire), line by line (a
 /// line ANSEL cannot hold stays as it is), and its tabs as spaces.
 fn composed(text: &str) -> String {
-    use oxidged::encoding::{decode_as, encode, GedcomEncoding};
+    use oxidged::encoding::{GedcomEncoding, decode_as, encode};
     text.replace('\t', " ")
         .lines()
         .map(|line| match encode(line, GedcomEncoding::Ansel) {

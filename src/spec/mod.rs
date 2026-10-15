@@ -156,12 +156,12 @@ mod validate;
 
 use std::fmt;
 
+use crate::GedcomVersion;
 use crate::encoding::decode;
 use crate::tree::{Structure, Tree};
-use crate::GedcomVersion;
 
-pub(crate) use payload::is_simple_date;
 use payload::Family;
+pub(crate) use payload::is_simple_date;
 pub(crate) use schema::Schema;
 use sealed::Sealed;
 pub(crate) use validate::is_external_pointer;
@@ -248,7 +248,7 @@ impl Dataset for [Structure] {}
 impl Dataset for Vec<Structure> {}
 
 mod sealed {
-    use super::{validate, Deviation, GedcomVersion, Structure, Tree};
+    use super::{Deviation, GedcomVersion, Structure, Tree, validate};
 
     /// Runs the validator.
     pub trait Sealed {

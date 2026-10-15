@@ -286,9 +286,11 @@ mod tests {
     /// [`long_form`] passes over what does not start with a letter.
     #[test]
     fn long_forms_start_with_a_letter() {
-        assert!(LONG_FORMS
-            .iter()
-            .all(|(long, _)| long.bytes().next().is_some_and(|b| b.is_ascii_alphabetic())));
+        assert!(
+            LONG_FORMS
+                .iter()
+                .all(|(long, _)| long.bytes().next().is_some_and(|b| b.is_ascii_alphabetic()))
+        );
         assert_eq!(long_form("birth"), Some("BIRT"));
         assert_eq!(long_form("_BIRTH"), None);
     }

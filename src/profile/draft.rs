@@ -11,12 +11,12 @@
 use std::borrow::Cow;
 use std::fmt;
 
+use crate::GedcomVersion;
 use crate::model::driver::NodeRef;
 use crate::tree::{
-    standard_index, Escaping, Node, Payload, PayloadRef, Structure, StructureRef, Tag, Xref,
+    Escaping, Node, Payload, PayloadRef, Structure, StructureRef, Tag, Xref, standard_index,
 };
 use crate::tree::{Flat, FlatPayload, TextPiece};
-use crate::GedcomVersion;
 
 /// The tag of a [`Draft`].
 #[derive(Clone, Default, PartialEq, Eq, Hash)]

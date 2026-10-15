@@ -248,9 +248,10 @@ fn removal_refuses_detaches_or_leaves_dangling() {
     dangling.remove(ann, Removal::LeaveDangling).unwrap();
     let left = dangling.dangling_references();
     assert_eq!(left.len(), 3);
-    assert!(left
-        .iter()
-        .all(|d| dangling.store().xref(d.pointer) == "@I1@"));
+    assert!(
+        left.iter()
+            .all(|d| dangling.store().xref(d.pointer) == "@I1@")
+    );
     assert_eq!(dangling.references("@I1@"), 3);
     assert_counts(&dangling);
 }
@@ -447,9 +448,11 @@ fn header_links() {
         empty.link(Holder::Header, Link::Note, "@N1@"),
         Err(EditError::NoHeader)
     );
-    assert!(empty
-        .set_header(Some(oxidged::model::Header::default()))
-        .is_none());
+    assert!(
+        empty
+            .set_header(Some(oxidged::model::Header::default()))
+            .is_none()
+    );
     empty.link(Holder::Header, Link::Note, "@N1@").unwrap();
     assert_eq!(empty.references("@N1@"), 1);
     assert!(empty.set_header(None).is_some());

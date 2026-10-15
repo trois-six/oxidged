@@ -234,7 +234,12 @@ fn real_world_dialects() {
             _ => {}
         }
     }
-    assert!(diffs.is_empty(), "{} files differ from {baseline_file} (regenerate it if every change is an improvement):\n{}", diffs.len(), diffs.join("\n"));
+    assert!(
+        diffs.is_empty(),
+        "{} files differ from {baseline_file} (regenerate it if every change is an improvement):\n{}",
+        diffs.len(),
+        diffs.join("\n")
+    );
 }
 
 /// The committed tables are what the generator makes of the pinned inputs.

@@ -29,12 +29,12 @@ use std::hash::BuildHasherDefault;
 
 use std::borrow::Cow;
 
+use crate::GedcomVersion;
 use crate::model::driver::NodeRef;
 use crate::tree::{
-    standard_index, Escaping, PayloadRef, Structure, Tag, TagHasher, Xref, STANDARD_TAGS,
+    Escaping, PayloadRef, STANDARD_TAGS, Structure, Tag, TagHasher, Xref, standard_index,
 };
 use crate::value::DateValue;
-use crate::GedcomVersion;
 
 use super::detect::{Detection, Gate};
 use super::draft::{Draft, DraftTag, Value};
@@ -43,7 +43,7 @@ use super::util::{
     name_value, payload_str, pointer_node, push_new, retag, set_text, suffix_part, surname_part,
     text_node,
 };
-use super::{Profile, EXTENSION_DOCS};
+use super::{EXTENSION_DOCS, Profile};
 
 /// How far reading interprets a producer's conventions.
 #[non_exhaustive]
@@ -1377,10 +1377,10 @@ impl<'r> Interpreter<'r> {
     ) -> InterpretReport {
         let deferred = std::mem::take(&mut self.deferred);
         apply_deferred(records, deferred, &mut self.report, self.v7, Some(taken));
-        if let Some(head) = head.filter(|_| self.v7) {
-            if declare(std::slice::from_mut(head), &self.declare) {
-                self.report.changed = true;
-            }
+        if let Some(head) = head.filter(|_| self.v7)
+            && declare(std::slice::from_mut(head), &self.declare)
+        {
+            self.report.changed = true;
         }
         self.report
     }
@@ -1936,11 +1936,11 @@ fn promote_child(parent: &mut Draft<'_>, i: usize) {
     let Some(tag) = parent.substructures.get(i).map(|c| c.tag.clone()) else {
         return;
     };
-    if let Some(first) = parent.substructures.iter().position(|c| c.tag == tag) {
-        if first < i {
-            let moved = parent.substructures.remove(i);
-            parent.substructures.insert(first, moved);
-        }
+    if let Some(first) = parent.substructures.iter().position(|c| c.tag == tag)
+        && first < i
+    {
+        let moved = parent.substructures.remove(i);
+        parent.substructures.insert(first, moved);
     }
 }
 
@@ -2137,31 +2137,30 @@ fn event_of<'s>(
     if payload {
         new.payload = Value::None;
     }
-    if let Some(ty) = ty {
-        if !has(&new, "TYPE") {
-            // First, the others after.
-            let mut substructures = Vec::with_capacity(new.substructures.len() + 1);
-            substructures.push(Draft {
-                tag: DraftTag::new("TYPE"),
-                payload: if ty.is_empty() {
-                    Value::None
-                } else {
-                    Value::Text(ty)
-                },
-                ..Draft::default()
-            });
-            substructures.append(&mut new.substructures);
-            new.substructures = substructures;
-        }
+    if let Some(ty) = ty
+        && !has(&new, "TYPE")
+    {
+        // First, the others after.
+        let mut substructures = Vec::with_capacity(new.substructures.len() + 1);
+        substructures.push(Draft {
+            tag: DraftTag::new("TYPE"),
+            payload: if ty.is_empty() {
+                Value::None
+            } else {
+                Value::Text(ty)
+            },
+            ..Draft::default()
+        });
+        substructures.append(&mut new.substructures);
+        new.substructures = substructures;
     }
     // A standard event says `Y` or nothing: a text goes to a note.
-    if !matches!(tag, "EVEN" | "FACT") {
-        if let Some(t) = new.text().map(str::to_string) {
-            if !t.eq_ignore_ascii_case("y") {
-                new.payload = Value::None;
-                new.substructures.push(text_node("NOTE", &t));
-            }
-        }
+    if !matches!(tag, "EVEN" | "FACT")
+        && let Some(t) = new.text().map(str::to_string)
+        && !t.eq_ignore_ascii_case("y")
+    {
+        new.payload = Value::None;
+        new.substructures.push(text_node("NOTE", &t));
     }
     if tag == "FACT" && new.text().is_none() {
         retag(&mut new, "EVEN");
@@ -3734,15 +3733,14 @@ fn date_dialect(value: &str, v7: bool) -> Option<String> {
     while let Some(w) = words.get(k) {
         let up = w.to_uppercase();
         // French Republican `AN II`.
-        if up == "AN" {
-            if let Some(n) = words
+        if up == "AN"
+            && let Some(n) = words
                 .get(k + 1)
                 .and_then(|n| roman(n).or_else(|| n.parse().ok()))
-            {
-                out.push(n.to_string());
-                k += 2;
-                continue;
-            }
+        {
+            out.push(n.to_string());
+            k += 2;
+            continue;
         }
         if let Some(&(_, to)) = DATE_WORDS.iter().find(|(from, _)| *from == up) {
             out.push(to.to_string());

@@ -10,8 +10,8 @@
 use std::collections::HashMap;
 
 use libfuzzer_sys::fuzz_target;
-use oxidged::convert::{convert_dataset, convert_structures, ConversionOptions};
-use oxidged::spec::{validate_text, DeviationKind};
+use oxidged::convert::{ConversionOptions, convert_dataset, convert_structures};
+use oxidged::spec::{DeviationKind, validate_text};
 use oxidged::tree::{Payload, Structure, Tree};
 use oxidged::{Bom, Dataset, GedcomVersion, GedcomWriter};
 

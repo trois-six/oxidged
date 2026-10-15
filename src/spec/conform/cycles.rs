@@ -3,7 +3,7 @@
 //! source, multimedia and shared note records, become plain extension
 //! structures where they are, with their pointers and substructures.
 
-use super::{node_at, with_node, Conformer, Family, Pick, Rec, RecRef, RepairKind, StructId};
+use super::{Conformer, Family, Pick, Rec, RecRef, RepairKind, StructId, node_at, with_node};
 use crate::spec::graph::{Broken, Graph, Pointer};
 use crate::spec::index::SchemaIndex;
 use crate::tree::{Flat, Node, PayloadRef, Structure, Tag};
@@ -79,14 +79,14 @@ impl<'n> Conformer<'n> {
                 _ => continue,
             };
             path.push(i);
-            if let PayloadRef::Pointer(p) = payload {
-                if self.tables.is_graph_pointer(self.schema, rtype, cty) {
-                    out.push(Found {
-                        path: path.clone(),
-                        to: p.to_string(),
-                        alias: self.tables.is_alias(cty),
-                    });
-                }
+            if let PayloadRef::Pointer(p) = payload
+                && self.tables.is_graph_pointer(self.schema, rtype, cty)
+            {
+                out.push(Found {
+                    path: path.clone(),
+                    to: p.to_string(),
+                    alias: self.tables.is_alias(cty),
+                });
             }
             if deep {
                 self.collect(c, cty, rtype, path, out);

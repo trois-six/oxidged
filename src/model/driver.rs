@@ -32,17 +32,17 @@ use std::borrow::Cow;
 
 use crate::spec::schema::Kind;
 use crate::tree::{
-    unescape_spans, Escaping, Flat, FlatPayload, Payload, RawKind, RawNode, RawSpan, Structure,
-    Tag, TextPiece, Xref, STANDARD_TAGS,
+    Escaping, Flat, FlatPayload, Payload, RawKind, RawNode, RawSpan, STANDARD_TAGS, Structure, Tag,
+    TextPiece, Xref, unescape_spans,
 };
 use crate::version::GedcomVersion;
 
 use super::list::ThinVec;
 use super::node::{Extra, Node};
 use super::table::{
-    push_span, reserve, Code, CopyCx, List, NodeRow, StoreCx, Tables, EMPTY_TABLES,
+    Code, CopyCx, EMPTY_TABLES, List, NodeRow, StoreCx, Tables, push_span, reserve,
 };
-use super::text::{Span, Store, StoreParts, TagId, Text, TextRef, XrefId, EXACT_DATE, SIMPLE_DATE};
+use super::text::{EXACT_DATE, SIMPLE_DATE, Span, Store, StoreParts, TagId, Text, TextRef, XrefId};
 
 /// The arena of the record being read: the builder's nodes, identifiers
 /// and joined pieces, with offsets relative to `text`, which starts at
@@ -712,15 +712,16 @@ pub(crate) fn read_row_into(
         cx.scratch.counts.resize(counts + fields.len(), 0);
         for child in node.children() {
             let field = usize::from(lookup.get(child.tag_id() as usize).copied().unwrap_or(0));
-            if field > 0 && fields.get(field - 1).is_some_and(|f| f.many) {
-                if let Some(c) = cx.scratch.counts.get_mut(counts + field - 1) {
-                    if *c == 0 {
-                        cx.scratch
-                            .lists
-                            .push(u16::try_from(field - 1).unwrap_or(u16::MAX));
-                    }
-                    *c += 1;
+            if field > 0
+                && fields.get(field - 1).is_some_and(|f| f.many)
+                && let Some(c) = cx.scratch.counts.get_mut(counts + field - 1)
+            {
+                if *c == 0 {
+                    cx.scratch
+                        .lists
+                        .push(u16::try_from(field - 1).unwrap_or(u16::MAX));
                 }
+                *c += 1;
             }
         }
         for i in lists..cx.scratch.lists.len() {

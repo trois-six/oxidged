@@ -400,10 +400,10 @@ impl<'a> XrefMap<'a> {
         if self.rules.xref == XrefGrammar::V7 && pointer == "@VOID@" {
             return Cow::Borrowed(pointer);
         }
-        if !self.renamed.is_empty() {
-            if let Some(new) = self.renamed.get(pointer) {
-                return Cow::Owned(new.to_string());
-            }
+        if !self.renamed.is_empty()
+            && let Some(new) = self.renamed.get(pointer)
+        {
+            return Cow::Owned(new.to_string());
         }
         if is_valid_pointer(self.rules, pointer) {
             return Cow::Borrowed(pointer);
@@ -420,7 +420,7 @@ impl<'a> XrefMap<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::version::{V551, V70};
+    use crate::version::{V70, V551};
 
     #[test]
     fn valid_unique_identifiers_are_kept() {

@@ -68,7 +68,7 @@ pub(crate) trait DeserializeIn: Sized {
     /// Deserializes the value, its identifiers and tags interned in
     /// `store`, its texts owned.
     fn deserialize_in<'de, D: Deserializer<'de>>(store: &mut Store, d: D)
-        -> Result<Self, D::Error>;
+    -> Result<Self, D::Error>;
 
     /// Deserializes a list of values, each given to `push`, as
     /// [`SerializeIn::serialize_list`] writes it.
@@ -969,7 +969,7 @@ impl<'de> Deserialize<'de> for Dataset {
                                     return Err(de::Error::invalid_value(
                                         de::Unexpected::Str(other),
                                         &"5.5.1, 7.0 or 7.1",
-                                    ))
+                                    ));
                                 }
                             };
                         }

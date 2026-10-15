@@ -8,14 +8,14 @@
 use std::collections::HashMap;
 
 use super::graph::{Graph, Pointer};
-use super::index::{SchemaIndex, SPEC_TAGS};
+use super::index::{SPEC_TAGS, SchemaIndex};
 use super::payload::{self, Family};
-use super::schema::{tag_index, Kind, Schema, StructId, DATASET};
+use super::schema::{DATASET, Kind, Schema, StructId, tag_index};
 use super::{Deviation, DeviationKind};
-use crate::tree::node::STANDARD_TAGS;
 use crate::tree::Node;
 use crate::tree::PayloadRef;
-use crate::version::{VersionRules, V551};
+use crate::tree::node::STANDARD_TAGS;
+use crate::version::{V551, VersionRules};
 
 /// The largest 5.5.1 record (p. 10: "less than 32K").
 pub(crate) const MAX_RECORD_BYTES: usize = 32_767;
@@ -626,14 +626,12 @@ impl<'a> Validator<'a> {
     /// A structure of a known type and its substructures.
     fn structure<N: Node<'a>>(&mut self, n: N, ty: StructId, _parent: &str, record: bool) {
         let tag = n.tag();
-        if !record {
-            if let Some(x) = n.xref() {
-                self.push(
-                    n.line(),
-                    DeviationKind::Xref,
-                    format!("{x}: a substructure has no identifier"),
-                );
-            }
+        if !record && let Some(x) = n.xref() {
+            self.push(
+                n.line(),
+                DeviationKind::Xref,
+                format!("{x}: a substructure has no identifier"),
+            );
         }
         self.payload(n, ty);
         let schema = self.schema;
@@ -830,18 +828,18 @@ impl<'a> Validator<'a> {
                 format!("{tag} {p}: no record has this identifier"),
             ),
             Some(r) => {
-                if let Some(want) = expect {
-                    if r.ty != Some(want) {
-                        self.push(
-                            n.line(),
-                            DeviationKind::PointerTarget,
-                            format!(
-                                "{tag} {p} points to a {} record, not to a {} record",
-                                r.tag,
-                                self.schema.tag(want)
-                            ),
-                        );
-                    }
+                if let Some(want) = expect
+                    && r.ty != Some(want)
+                {
+                    self.push(
+                        n.line(),
+                        DeviationKind::PointerTarget,
+                        format!(
+                            "{tag} {p} points to a {} record, not to a {} record",
+                            r.tag,
+                            self.schema.tag(want)
+                        ),
+                    );
                 }
             }
         }

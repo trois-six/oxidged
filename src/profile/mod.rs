@@ -91,18 +91,18 @@ mod util;
 
 use std::fmt;
 
-pub use detect::{Detection, HeadFields, ProducerVersion, FINGERPRINT_CAP, THRESHOLD};
+pub use detect::{Detection, FINGERPRINT_CAP, HeadFields, ProducerVersion, THRESHOLD};
 pub use export::{
     ExportOptions, ExportReport, Exporter, Fold, FoldKind, HeadSource, Limit, MediaPaths, Target,
 };
-pub use interpret::{docs_uri, interpret, Action, InterpretReport, Interpretation, Mapping};
+pub use interpret::{Action, InterpretReport, Interpretation, Mapping, docs_uri, interpret};
 
 pub(crate) use import_data::GENERIC;
 pub(crate) use interpret::RuleSet;
 pub(crate) use util::long_form;
 
-use crate::encoding::GedcomEncoding;
 use crate::GedcomVersion;
+use crate::encoding::GedcomEncoding;
 
 /// Where oxidged documents the producers' extension tags it writes in
 /// GEDCOM 7.x files: each tag has the anchor `#<profile>-<TAG>` there

@@ -150,7 +150,7 @@ fn text(tag: &str, value: &str) -> Structure {
 mod tests {
     use super::*;
     use crate::tree::parse_tree;
-    use crate::version::{V551, V70};
+    use crate::version::{V70, V551};
 
     fn head(text: &str) -> Structure {
         parse_tree(text).to_structures().remove(0)

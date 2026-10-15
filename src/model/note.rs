@@ -3,7 +3,7 @@
 use crate::tree::{FlatPayload, Payload};
 
 use super::citation::Citation;
-use super::driver::{gedcom_struct, PayloadField, StdTag, WriteCx};
+use super::driver::{PayloadField, StdTag, WriteCx, gedcom_struct};
 use super::enums::{NoteKind, Phrased};
 use super::text::{Text, XrefId};
 

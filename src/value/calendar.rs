@@ -12,7 +12,7 @@ use std::borrow::Cow;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use super::{ascii_upper, is_ext_tag, is_lenient_ext_tag, Grammar};
+use super::{Grammar, ascii_upper, is_ext_tag, is_lenient_ext_tag};
 
 /// The calendar of a date.
 ///

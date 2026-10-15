@@ -10,7 +10,7 @@
 
 use std::sync::LazyLock;
 
-use super::schema::{Kind, Schema, StructId, DATASET};
+use super::schema::{DATASET, Kind, Schema, StructId};
 use super::tables;
 
 /// One permitted substructure: `tag` of type `ty` under a structure of type
@@ -77,7 +77,7 @@ pub static V551: LazyLock<Spec> = LazyLock::new(|| flat(&tables::V551));
 pub static V70: LazyLock<Spec> = LazyLock::new(|| flat(&tables::V70));
 pub static V71: LazyLock<Spec> = LazyLock::new(|| flat(&tables::V71));
 
-fn ids(schema: &Schema) -> impl Iterator<Item = StructId> {
+fn ids(schema: &Schema) -> impl Iterator<Item = StructId> + use<> {
     (0..schema.structs.len()).filter_map(|i| StructId::try_from(i).ok())
 }
 

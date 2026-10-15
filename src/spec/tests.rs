@@ -2,7 +2,7 @@
 //! table.
 
 use super::*;
-use crate::tree::{parse_tree, Payload, Xref};
+use crate::tree::{Payload, Xref, parse_tree};
 use crate::value::Calendar;
 
 /// The calendars of the tables and of the date grammar agree: same
@@ -169,9 +169,11 @@ fn line_length_and_record_size() {
     }
     assert!(v551(&big).contains(&(10, K::RecordSize)));
     let tree = parse_tree(&format!("{H551}{big}0 TRLR\n"));
-    assert!(validate(&tree, GedcomVersion::V5_5_1)
-        .iter()
-        .any(|d| d.kind == K::RecordSize));
+    assert!(
+        validate(&tree, GedcomVersion::V5_5_1)
+            .iter()
+            .any(|d| d.kind == K::RecordSize)
+    );
 }
 
 #[test]
@@ -374,7 +376,9 @@ fn pointer_rules_between_records() {
     );
     // An extension pointer is no part of the rule.
     assert_eq!(
-        v70("0 @S1@ SOUR\n1 OBJE @O1@\n0 @O1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n1 _SOUR @S1@\n"),
+        v70(
+            "0 @S1@ SOUR\n1 OBJE @O1@\n0 @O1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n1 _SOUR @S1@\n"
+        ),
         []
     );
     // 5.5.1 has neither rule.
@@ -400,9 +404,11 @@ fn header_and_trailer() {
         [(5, K::Header)]
     );
     let tree = parse_tree("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 TRLR\n");
-    assert!(validate(&tree, GedcomVersion::V7_0)
-        .iter()
-        .any(|d| d.kind == K::Header && d.line == 3));
+    assert!(
+        validate(&tree, GedcomVersion::V7_0)
+            .iter()
+            .any(|d| d.kind == K::Header && d.line == 3)
+    );
 }
 
 #[test]
@@ -897,9 +903,11 @@ fn repair_j_record_size() {
         joined.push_str(t);
     }
     assert_eq!(joined, text);
-    assert!(texts
-        .iter()
-        .all(|t| !t.starts_with(' ') && !t.ends_with(' ') || t.ends_with("word ")));
+    assert!(
+        texts
+            .iter()
+            .all(|t| !t.starts_with(' ') && !t.ends_with(' ') || t.ends_with("word "))
+    );
 
     // A record nothing can shrink is left as it is.
     let mut body = String::from("0 @I1@ INDI\n");

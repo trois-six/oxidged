@@ -4,11 +4,11 @@
 //! reindexing after edits), and how the model clones and compares. Every
 //! name and value is fictitious.
 
+use oxidged::IndexedDataset;
 use oxidged::model::{
     Dataset, Family, Individual, IndividualRef, Name, RecordRef, Removal, Repository, Sex, View,
     XrefId,
 };
-use oxidged::IndexedDataset;
 
 /// A family of three, their sources and the other record types.
 const FAMILY: &str = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n\
@@ -258,9 +258,11 @@ fn dangling_references_of_every_kind_but_void() {
         ]
     );
     assert!(data.dangling_references()[0].record.is_none()); // the header
-    assert!(Dataset::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR\n")
-        .dangling_references()
-        .is_empty());
+    assert!(
+        Dataset::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR\n")
+            .dangling_references()
+            .is_empty()
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -455,10 +457,11 @@ fn cloned_records_equal_their_originals() {
     }
     let individuals = data.individuals().to_vec();
     assert_eq!(individuals.len(), data.individuals().len());
-    assert!(data
-        .individuals()
-        .iter()
-        .any(|i| i.into_owned() == individuals[2]));
+    assert!(
+        data.individuals()
+            .iter()
+            .any(|i| i.into_owned() == individuals[2])
+    );
 }
 
 #[test]

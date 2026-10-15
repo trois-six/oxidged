@@ -27,7 +27,9 @@ fn generated_cases() -> Vec<Case> {
          0 @I1@ INDI\n1 NAME Ann /Example/\n1 NOTE Long research log.\n",
     );
     for i in 0..400 {
-        big += &format!("2 CONT Entry {i:03}: the register of Sampleton was searched again without a new result, page by page.\n");
+        big += &format!(
+            "2 CONT Entry {i:03}: the register of Sampleton was searched again without a new result, page by page.\n"
+        );
     }
     big += "0 @U0@ SUBM\n1 NAME Example Submitter\n0 TRLR\n";
     let mut c = Case::new("G5-RECORD-32K", cases::Kind::L, big);

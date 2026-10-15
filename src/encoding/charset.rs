@@ -55,7 +55,7 @@ impl SingleByte {
                 return match ansel_mark(byte) {
                     Some(mark) => Decoded::Mark(mark),
                     None => Decoded::Char(ansel_char(byte)),
-                }
+                };
             }
         };
         // `upper` is below 128 by construction.
@@ -340,11 +340,9 @@ pub(crate) fn push_composed(out: &mut String, base: char, marks: &[char]) {
         let m = all[i];
         let class = ansel_nfc::ccc(m);
         let blocked = last_class.is_some_and(|last| last >= class);
-        if !blocked {
-            if let Some(composite) = compose_pair(starter, m) {
-                starter = composite;
-                continue;
-            }
+        if !blocked && let Some(composite) = compose_pair(starter, m) {
+            starter = composite;
+            continue;
         }
         all[kept] = m;
         kept += 1;

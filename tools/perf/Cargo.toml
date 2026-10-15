@@ -1,7 +1,7 @@
 [package]
 name = "oxidged-perf"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 publish = false
 description = "Time, throughput and peak memory of oxidged's pipelines on generated or given GEDCOM files, with the thresholds the CI checks."
 

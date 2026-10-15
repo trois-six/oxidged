@@ -10,11 +10,11 @@
 use crate::profile::draft::Draft;
 use crate::profile::draft::Value;
 use crate::profile::interpret::{
-    Edit, InArena, InterpretReport, Interpreter, Rewrite, RuleSet, PLACEHOLDER,
+    Edit, InArena, InterpretReport, Interpreter, PLACEHOLDER, Rewrite, RuleSet,
 };
 use crate::tree::{
-    head_version, segment_bounds, Builder, Escaping, PayloadRef, RawKind, RawSpan, TagInterner,
-    TextPiece,
+    Builder, Escaping, PayloadRef, RawKind, RawSpan, TagInterner, TextPiece, head_version,
+    segment_bounds,
 };
 use crate::version::GedcomVersion;
 
@@ -564,15 +564,15 @@ fn push_arena(
         let len = u32::try_from(s.len()).unwrap_or(0);
         let from = input.as_ptr() as usize;
         let at = s.as_ptr() as usize;
-        if at >= from && at + s.len() <= from + input.len() {
-            if let Ok(start) = u32::try_from(at - from) {
-                if start & Arena::INPUT == 0 {
-                    return RawSpan {
-                        start: start | Arena::INPUT,
-                        len,
-                    };
-                }
-            }
+        if at >= from
+            && at + s.len() <= from + input.len()
+            && let Ok(start) = u32::try_from(at - from)
+            && start & Arena::INPUT == 0
+        {
+            return RawSpan {
+                start: start | Arena::INPUT,
+                len,
+            };
         }
         let at = u32::try_from(text.len()).unwrap_or(u32::MAX);
         text.push_str(s);
@@ -946,10 +946,8 @@ impl Pass<'_, '_> {
             wanted
         };
         let mut drafts = vec![Draft::of_arena(root, &tags.others, escaping)];
-        if head {
-            if let Some(h) = drafts.first() {
-                self.interp.read_head(h);
-            }
+        if head && let Some(h) = drafts.first() {
+            self.interp.read_head(h);
         }
         let rewrite = if wanted {
             let index = &*sink.index;

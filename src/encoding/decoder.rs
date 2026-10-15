@@ -7,8 +7,8 @@
 //!
 //! [`DecodeReader`]: super::DecodeReader
 
-use super::charset::{push_composed, Decoded, SingleByte};
-use super::detect::{continues, is_incomplete_sequence, utf8_width, Mode};
+use super::charset::{Decoded, SingleByte, push_composed};
+use super::detect::{Mode, continues, is_incomplete_sequence, utf8_width};
 
 /// Decodes a byte stream in the given [`Mode`].
 #[derive(Debug)]

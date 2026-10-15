@@ -8,7 +8,7 @@ use crate::encoding::GedcomEncoding::{Iso8859_1, MacRoman, Windows1252};
 use super::detect::Gate;
 use super::dsl::{import_profile, rule, sig};
 use super::interpret::{CropForm, Label, NameKind, NameValue, Op};
-use super::{Profile, FAMILYSEARCH_PERSON};
+use super::{FAMILYSEARCH_PERSON, Profile};
 
 /// The events and attributes of persons and families, as a rule context
 /// (`INDI|FAM.BIRT|…`), followed by `$rest`: where event details

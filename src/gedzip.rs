@@ -62,9 +62,9 @@
 use std::collections::HashMap;
 use std::io::{Read, Seek, Write};
 
+use zip::CompressionMethod;
 use zip::read::ZipArchive;
 use zip::write::ZipWriter;
-use zip::CompressionMethod;
 
 use crate::model::Dataset;
 use crate::writer::{GedcomWriter, WriteError};
@@ -613,13 +613,14 @@ fn entry_key(name: &str) -> String {
     let mut i = 0;
     while i < bytes.len() {
         let hex = |b: u8| char::from(b).to_digit(16);
-        if bytes[i] == b'%' && i + 2 < bytes.len() {
-            if let (Some(hi), Some(lo)) = (hex(bytes[i + 1]), hex(bytes[i + 2])) {
-                // Both digits are below 16, so the byte fits.
-                decoded.push(u8::try_from(hi * 16 + lo).unwrap_or(b'%'));
-                i += 3;
-                continue;
-            }
+        if bytes[i] == b'%'
+            && i + 2 < bytes.len()
+            && let (Some(hi), Some(lo)) = (hex(bytes[i + 1]), hex(bytes[i + 2]))
+        {
+            // Both digits are below 16, so the byte fits.
+            decoded.push(u8::try_from(hi * 16 + lo).unwrap_or(b'%'));
+            i += 3;
+            continue;
         }
         decoded.push(bytes[i]);
         i += 1;
@@ -884,10 +885,12 @@ mod tests {
         ));
         // Strict mode applies too: the writer repaired `SEX male`, so the
         // archive holds a conformant file.
-        assert!(GedcomBuilder::new()
-            .strict(true)
-            .build_from_gedzip(archive())
-            .is_ok());
+        assert!(
+            GedcomBuilder::new()
+                .strict(true)
+                .build_from_gedzip(archive())
+                .is_ok()
+        );
         assert!(matches!(
             GedcomBuilder::new().build_from_gedzip(std::io::Cursor::new(b"not a zip")),
             Err(GedcomError::Gedzip(GedzipError::Zip(_)))

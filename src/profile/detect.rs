@@ -12,10 +12,10 @@
 
 use std::fmt;
 
-use crate::encoding::{decode, detect_encoding, GedcomEncoding};
+use crate::encoding::{GedcomEncoding, decode, detect_encoding};
 use crate::tree::{Structure, Tree};
 
-use super::{long_form, Profile, GENERIC};
+use super::{GENERIC, Profile, long_form};
 
 /// The score a profile needs to be taken as the producer.
 pub const THRESHOLD: u32 = 100;
@@ -364,19 +364,18 @@ pub(crate) fn fingerprints_in(text: &str) -> Vec<&'static str> {
             .get(at..)
             .and_then(|after| after.iter().position(eol))
             .map_or(bytes.len(), |p| at + p);
-        if let Some(line) = text.get(start..end) {
-            if let crate::tree::Line::Structure { tag, .. } = crate::tree::lex_line(line) {
-                if tag.0 == at - start {
-                    let tag = line.get(tag.0..tag.1).unwrap_or_default();
-                    let print = match last {
-                        Some((t, print)) if t == tag => print,
-                        _ => fingerprint(tag),
-                    };
-                    last = Some((tag, print));
-                    if let Some(print) = print.filter(|p| !found.contains(p)) {
-                        found.push(print);
-                    }
-                }
+        if let Some(line) = text.get(start..end)
+            && let crate::tree::Line::Structure { tag, .. } = crate::tree::lex_line(line)
+            && tag.0 == at - start
+        {
+            let tag = line.get(tag.0..tag.1).unwrap_or_default();
+            let print = match last {
+                Some((t, print)) if t == tag => print,
+                _ => fingerprint(tag),
+            };
+            last = Some((tag, print));
+            if let Some(print) = print.filter(|p| !found.contains(p)) {
+                found.push(print);
             }
         }
         from = end.max(at + 1);
@@ -515,12 +514,13 @@ impl Detection {
                 best = Some((profile, score, evidence));
             }
         }
-        if let Some((profile, score, evidence)) = best {
-            if !self.chosen && (score > self.score || std::ptr::eq(profile, self.profile)) {
-                self.profile = profile;
-                self.score = score;
-                self.evidence = evidence;
-            }
+        if let Some((profile, score, evidence)) = best
+            && !self.chosen
+            && (score > self.score || std::ptr::eq(profile, self.profile))
+        {
+            self.profile = profile;
+            self.score = score;
+            self.evidence = evidence;
         }
         hints.retain(|h| !self.chain().any(|p| std::ptr::eq(p, *h)));
         // What this crate wrote holds no other producer's extensions to
@@ -576,7 +576,7 @@ impl Detection {
     }
 
     /// The producer's profile and its parents, nearest first.
-    pub fn chain(&self) -> impl Iterator<Item = &'static Profile> {
+    pub fn chain(&self) -> impl Iterator<Item = &'static Profile> + use<> {
         let mut next = Some(self.profile);
         std::iter::from_fn(move || {
             let p = next?;

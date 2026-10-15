@@ -5,21 +5,21 @@ use std::collections::HashMap;
 use std::io;
 use std::rc::Rc;
 
-use super::emit::{candidate_xref, is_valid_pointer, new_xref, LineSink};
+use super::emit::{LineSink, candidate_xref, is_valid_pointer, new_xref};
 use super::head;
-use super::xref::{numbered_xref, XrefIndex};
+use super::xref::{XrefIndex, numbered_xref};
 use super::{
-    drop_credentials, holds_credentials, map_pointers, put_flat, put_record, put_structure,
-    record_prefix, Credentials, Emitter, GedcomWriter, Pointers, Repair, RepairKind, RepairPolicy,
-    WriteError, WriteReport, WriterConfig,
+    Credentials, Emitter, GedcomWriter, Pointers, Repair, RepairKind, RepairPolicy, WriteError,
+    WriteReport, WriterConfig, drop_credentials, holds_credentials, map_pointers, put_flat,
+    put_record, put_structure, record_prefix,
 };
-use crate::convert::{built_structure, Converter, Entry, Fate, Fresh, Out, Watch};
+use crate::convert::{Converter, Entry, Fate, Fresh, Out, Watch, built_structure};
 use crate::model::driver::{ToNodes, WriteCx};
 use crate::model::write::Built;
 use crate::model::{Dataset, Header};
 use crate::model::{RecordRef, Store};
 use crate::spec::conform::streamed::{Outcome, Streamed};
-use crate::spec::conform::{model_order, FieldOrder};
+use crate::spec::conform::{FieldOrder, model_order};
 use crate::tree::{PayloadRef, Structure, Tag, Xref};
 use crate::version::{GedcomVersion, VersionRules, XrefGrammar};
 

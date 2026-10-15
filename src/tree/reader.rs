@@ -4,10 +4,10 @@ use std::collections::VecDeque;
 use std::io::{self, BufRead};
 
 use super::lexer::{
-    find_eol, head_version, lex_line, starts_stray, terminator_len, Builder, Escaping, Line,
-    TagInterner, TERMINATOR_LOOKAHEAD,
+    Builder, Escaping, Line, TERMINATOR_LOOKAHEAD, TagInterner, find_eol, head_version, lex_line,
+    starts_stray, terminator_len,
 };
-use super::{arena, Structure};
+use super::{Structure, arena};
 use crate::encoding::{DecodeReader, GedcomEncoding};
 use crate::version::GedcomVersion;
 

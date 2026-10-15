@@ -1,6 +1,6 @@
 use super::*;
-use crate::tree::Tree;
 use crate::Bom;
+use crate::tree::Tree;
 
 const V551: GedcomVersion = GedcomVersion::V5_5_1;
 const V70: GedcomVersion = GedcomVersion::V7_0;
@@ -156,8 +156,7 @@ fn obsolete_structures_go_or_are_kept() {
 
 #[test]
 fn sources_in_words_become_records() {
-    let body =
-        "0 @I1@ INDI\n1 SOUR Parish register\n2 PAGE p. 4\n2 TEXT Born at home\n2 NOTE Seen\n\
+    let body = "0 @I1@ INDI\n1 SOUR Parish register\n2 PAGE p. 4\n2 TEXT Born at home\n2 NOTE Seen\n\
                 2 TEXT second text\n";
     let out = write("5.5.1", body, V70);
     has(

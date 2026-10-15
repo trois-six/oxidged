@@ -6,7 +6,7 @@ use super::{PayloadRef, Structure, StructureRef, Substructures};
 
 /// The standard tags and the index of one: what lets the validator and the
 /// repair find a tag's type without its text.
-pub(crate) use super::tag::{standard_index, STANDARD_TAGS};
+pub(crate) use super::tag::{STANDARD_TAGS, standard_index};
 
 /// Gives `f` the identifier and the pointers of `n` and of every structure
 /// under it: every identifier it uses.

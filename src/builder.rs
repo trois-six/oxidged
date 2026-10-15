@@ -15,11 +15,11 @@
 
 use std::io::Read;
 
-use crate::encoding::{decode_as, decode_owned, decode_owned_with, GedcomEncoding};
+use crate::GedcomError;
+use crate::encoding::{GedcomEncoding, decode_as, decode_owned, decode_owned_with};
 use crate::model::Dataset;
 use crate::profile::{Detection, HeadFields, InterpretReport, Interpretation, Profile};
-use crate::spec::{validate_bytes, validate_text, Deviation};
-use crate::GedcomError;
+use crate::spec::{Deviation, validate_bytes, validate_text};
 
 /// Reads datasets, with options.
 ///
@@ -464,10 +464,12 @@ mod tests {
             builder.build_from_reader(std::io::repeat(b'0')),
             Err(GedcomError::FileTooLarge { size: 11, max: 10 })
         ));
-        assert!(GedcomBuilder::new()
-            .max_file_size(TEXT.len())
-            .build_from_str(TEXT)
-            .is_ok());
+        assert!(
+            GedcomBuilder::new()
+                .max_file_size(TEXT.len())
+                .build_from_str(TEXT)
+                .is_ok()
+        );
     }
 
     #[test]

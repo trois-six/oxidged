@@ -14,8 +14,8 @@
 //!
 //! Nothing here fails: every input gets a decoding.
 
-use super::charset::SingleByte;
 use super::GedcomEncoding;
+use super::charset::SingleByte;
 
 /// How the decoder turns bytes into characters.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

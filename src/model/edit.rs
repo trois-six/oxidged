@@ -1306,7 +1306,7 @@ impl Dataset {
             .defs
             .iter()
             .enumerate()
-            .filter(|(_, &d)| d != 0)
+            .filter(|&(_, &d)| d != 0)
             .map(|(i, _)| i)
             .chain(self.index.more.iter().map(|(id, _)| id.index()));
         for i in ids {
@@ -1775,10 +1775,10 @@ impl Dataset {
                 continue;
             };
             let (old, new) = (place(kind, at + 1), place(kind, at));
-            if let Some(d) = self.index.defs.get_mut(id.index()) {
-                if *d == old {
-                    *d = new;
-                }
+            if let Some(d) = self.index.defs.get_mut(id.index())
+                && *d == old
+            {
+                *d = new;
             }
         }
         for (_, p) in &mut self.index.more {

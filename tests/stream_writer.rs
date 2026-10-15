@@ -4,7 +4,7 @@
 //! conforms, but for the pointers it cannot check.
 
 use oxidged::model::{Header, Individual};
-use oxidged::spec::{validate_text, DeviationKind};
+use oxidged::spec::{DeviationKind, validate_text};
 use oxidged::{
     Bom, Dataset, GedcomStreamWriter, GedcomVersion, GedcomWriter, RepairKind, RepairPolicy,
     WriteReport, WriterConfig,

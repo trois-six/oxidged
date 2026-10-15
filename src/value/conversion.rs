@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use calendrical_calculations::hebrew::BookHebrew;
 use calendrical_calculations::rata_die::RataDie;
 
-use super::calendar::{max_day, Calendar, Epoch, Month};
+use super::calendar::{Calendar, Epoch, Month, max_day};
 use super::date::{CalendarDate, DatePeriod, DateValue};
 
 /// The largest year, before or after the epoch, calendar arithmetic accepts.

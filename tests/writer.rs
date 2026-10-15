@@ -9,7 +9,7 @@ use oxidged::model::{
     Value,
 };
 use oxidged::model::{Text, XrefId};
-use oxidged::tree::{parse_tree, Tree};
+use oxidged::tree::{Tree, parse_tree};
 use oxidged::{
     Bom, Dataset, GedcomBuilder, GedcomVersion, GedcomWriter, LineEnding, OutputEncoding,
     RepairKind, RepairPolicy, WriteError,
@@ -553,14 +553,18 @@ fn identifiers_are_valid_and_unique() {
         assert!(written.contains(line), "{line:?} in\n{written}");
     }
     assert_eq!(report.repairs.len(), 4, "{:?}", report.repairs);
-    assert!(report
-        .repairs
-        .iter()
-        .all(|r| r.kind == RepairKind::Xref && r.line == 0));
-    assert!(report
-        .repairs
-        .iter()
-        .any(|r| &*r.detail == "identifier @i2@ written as @I2@"));
+    assert!(
+        report
+            .repairs
+            .iter()
+            .all(|r| r.kind == RepairKind::Xref && r.line == 0)
+    );
+    assert!(
+        report
+            .repairs
+            .iter()
+            .any(|r| &*r.detail == "identifier @i2@ written as @I2@")
+    );
 
     let error = GedcomWriter::new()
         .on_nonconformant(RepairPolicy::Error)
@@ -654,11 +658,13 @@ fn deep_nesting_and_banned_characters() {
             deepest <= if version.is_v7() { 254 } else { 98 },
             "{deepest}"
         );
-        assert!(report
-            .repairs
-            .iter()
-            .any(|r| r.kind == RepairKind::Characters
-                && r.detail.contains("2 banned character(s) left out")));
+        assert!(
+            report
+                .repairs
+                .iter()
+                .any(|r| r.kind == RepairKind::Characters
+                    && r.detail.contains("2 banned character(s) left out"))
+        );
         assert!(report.repairs.iter().any(|r| r.kind == RepairKind::Level));
     }
 }
@@ -956,8 +962,9 @@ fn credentials_are_left_out_by_default() {
         let text = String::from_utf8(bytes).unwrap();
         assert!(!text.contains("secret") && !text.contains("ZXhh"), "{text}");
     }
-    assert!(data
-        .to_structures()
-        .iter()
-        .any(|r| r.first("_DBID").and_then(|d| d.first("_PASS")).is_some()));
+    assert!(
+        data.to_structures()
+            .iter()
+            .any(|r| r.first("_DBID").and_then(|d| d.first("_PASS")).is_some())
+    );
 }

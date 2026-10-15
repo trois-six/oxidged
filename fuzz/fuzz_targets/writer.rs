@@ -9,7 +9,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use oxidged::model::Header;
-use oxidged::tree::{parse_tree, Tree};
+use oxidged::tree::{Tree, parse_tree};
 use oxidged::{
     Dataset, GedcomStreamWriter, GedcomVersion, GedcomWriter, OutputEncoding, WriterConfig,
 };

@@ -8,7 +8,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use oxidged::model::{ledger, Dataset};
+use oxidged::model::{Dataset, ledger};
 use oxidged::{GedcomVersion, GedcomWriter};
 
 #[path = "common/left.rs"]
