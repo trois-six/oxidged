@@ -1,2 +1,10 @@
-# Conformance fixtures are byte-exact: no line-ending or encoding normalisation.
+# Text files are checked out with LF line endings on every platform: tests
+# compare generated output with committed files byte for byte (the producer
+# profile fixtures, docs/extensions.md), and Git for Windows would otherwise
+# convert them to CRLF on checkout.
+* text=auto eol=lf
+
+# Conformance and producer-profile fixtures are byte-exact: no line-ending or
+# encoding normalisation (some fixtures test CR, CRLF and legacy encodings).
 tests/fixtures/conformance/** -text
+tests/profiles/fixtures/** -text
