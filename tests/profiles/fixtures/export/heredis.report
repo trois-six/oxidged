@@ -18,3 +18,4 @@ repair: INDI.UID: not permitted here, written as _UID
 repair: INDI.RESN "PRIVACY" written as privacy
 repair: INDI.FAMC.PEDI "BIRTH" written as birth
 repair: FAM.NO: not permitted here, written as _NO
+repair: INDI.OBJE.CROP: not permitted here, written as _CROP

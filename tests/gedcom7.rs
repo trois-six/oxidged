@@ -741,8 +741,10 @@ fn structures_5_5_1_lacks_are_written_to_it_as_extensions() {
         .gedcom_version(GedcomVersion::V5_5_1)
         .write_to_string_with_report(&data)
         .unwrap();
+    // The repaired INIL is ordered where the typed model puts it, ahead of
+    // the extensions the model keeps.
     assert!(out.contains(
-        "0 @I1@ INDI\n1 _FAMC @@VOID@@\n1 _INIL\n2 TEMP SLAKE\n1 _NO MARR\n1 _UID abc\n"
+        "0 @I1@ INDI\n1 _INIL\n2 TEMP SLAKE\n1 _FAMC @@VOID@@\n1 _NO MARR\n1 _UID abc\n"
     ));
     let kinds: Vec<_> = report.repairs.iter().map(|r| r.kind).collect();
     assert_eq!(

@@ -30,9 +30,10 @@ use clean::Walk;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
-use super::index::SchemaIndex;
+use super::index::{self, SchemaIndex};
 use super::payload::{self, Family, is_ext_tag};
 use super::schema::{DATASET, Kind, Schema, StructId, tag_index};
+use super::tables::TAGS;
 use super::validate::{
     Aliases, MAX_RECORD_BYTES, Pick, Picker, encoded_len, is_external_pointer, pick, xref_error,
 };
@@ -148,12 +149,30 @@ struct ModelRead {
 impl ModelRead {
     /// The rank of the field `c`, a substructure of a `ty` structure, goes
     /// to; `None` when it is kept aside.
-    fn read<'a, N: Node<'a>>(&mut self, order: &FieldOrder, ty: StructId, c: N) -> Option<u16> {
+    fn read<'a, N: Node<'a>>(
+        &mut self,
+        version: GedcomVersion,
+        order: &FieldOrder,
+        ty: StructId,
+        c: N,
+    ) -> Option<u16> {
         fn bit(set: &mut [u64], i: u16) -> Option<(&mut u64, u64)> {
             let word = set.get_mut(usize::from(i / 64))?;
             Some((word, 1 << (i % 64)))
         }
-        let standard = c.standard_tag()?;
+        // An extension the reader reads back as its standard structure is
+        // ordered as that structure.
+        let standard = match c.standard_tag() {
+            Some(standard) => standard,
+            None => read_back(
+                version,
+                &[ty],
+                c.tag(),
+                !matches!(c.payload(), PayloadRef::None),
+                c.children().any(|g| g.standard_tag().is_none()),
+                |t| c.children().any(|g| g.tag() == t),
+            )?,
+        };
         let field = order.field(ty, standard);
         let fits = field.filter(|f| {
             let blocked = bit(&mut self.aside, standard).is_none_or(|(w, b)| *w & b != 0);
@@ -1700,7 +1719,7 @@ impl<'n> Conformer<'n> {
         let mut read = ModelRead::default();
         let (mut last, mut aside) = (0, false);
         let in_order = s.substructures.iter().all(|c| {
-            let Some(rank) = read.read(order, ty, c) else {
+            let Some(rank) = read.read(self.rules.version, order, ty, c) else {
                 aside = true;
                 return true;
             };
@@ -1713,7 +1732,7 @@ impl<'n> Conformer<'n> {
             let mut fields: Vec<(u16, Structure)> = Vec::with_capacity(s.substructures.len());
             let mut kept: Vec<Structure> = Vec::new();
             for c in std::mem::take(&mut s.substructures) {
-                match read.read(order, ty, &c) {
+                match read.read(self.rules.version, order, ty, &c) {
                     Some(rank) => fields.push((rank, c)),
                     None => kept.push(c),
                 }
@@ -1728,7 +1747,8 @@ impl<'n> Conformer<'n> {
         }
         let mut read = ModelRead::default();
         for c in &mut s.substructures {
-            if read.read(order, ty, &*c).is_none() || c.substructures.is_empty() {
+            if read.read(self.rules.version, order, ty, &*c).is_none() || c.substructures.is_empty()
+            {
                 continue;
             }
             let is_ptr = matches!(c.payload, Payload::Pointer(_));
@@ -1754,7 +1774,7 @@ impl<'n> Conformer<'n> {
         let mut read = ModelRead::default();
         let (mut last, mut aside) = (0, false);
         let in_order = n.children().all(|c| {
-            let Some(rank) = read.read(order, ty, c) else {
+            let Some(rank) = read.read(self.rules.version, order, ty, c) else {
                 aside = true;
                 return true;
             };
@@ -1767,7 +1787,9 @@ impl<'n> Conformer<'n> {
         }
         let mut read = ModelRead::default();
         n.children().all(|c| {
-            if read.read(order, ty, c).is_none() || c.children().next().is_none() {
+            if read.read(self.rules.version, order, ty, c).is_none()
+                || c.children().next().is_none()
+            {
                 return true;
             }
             let is_ptr = matches!(c.payload(), PayloadRef::Pointer(_));
@@ -2437,13 +2459,17 @@ impl<'n> Conformer<'n> {
     }
 
     /// The minimal structure that stands for a missing required `sub` of
-    /// `parent`, from the documented list; `None` when there is none.
+    /// `parent`, from the documented list ([`synthesisable`]); `None` when
+    /// there is none.
     fn synthesise(&mut self, parent: &Structure, sub: StructId) -> Option<Structure> {
         let schema = self.schema;
         let v7 = self.family == Family::V7;
+        if !synthesisable(schema, v7, parent.tag.as_str(), sub) {
+            return None;
+        }
         let tag = schema.tag(sub);
         let parent_tag = parent.tag.as_str();
-        let made = match (parent_tag, tag) {
+        Some(match (parent_tag, tag) {
             (_, "FORM") if parent_tag == "FILE" || parent_tag == "TRAN" => {
                 let file = parent.text().unwrap_or("");
                 if v7 {
@@ -2455,21 +2481,8 @@ impl<'n> Conformer<'n> {
             ("TRAN", "LANG") if v7 => text("LANG", "und"),
             ("ASSO", "ROLE") if v7 => text("ROLE", "OTHER"),
             ("SLGC", "FAMC") if v7 => pointer("FAMC", Xref::VOID),
-            _ => {
-                let (kind, arg) = schema.kind(sub);
-                let open = kind == Kind::Enum && schema.enum_set(arg).is_some_and(|e| e.open);
-                // A placeholder only stands for a leaf: a structure with
-                // required parts of its own (a FILE needs its FORM) is not
-                // invented.
-                let leaf = schema.subs(sub).iter().all(|s| s.min == 0);
-                if (kind == Kind::Text || open) && leaf {
-                    text(tag, PLACEHOLDER)
-                } else {
-                    return None;
-                }
-            }
-        };
-        Some(made)
+            _ => text(tag, PLACEHOLDER),
+        })
     }
 
     /// Rules the tables cannot state: a 7.x note translation says its
@@ -2703,6 +2716,111 @@ fn extension_tags<'n, N: Node<'n>>(r: &Rec<'n, N>, arena: &Flat<'n>) -> HashSet<
     let mut scratch = Flat::default();
     with_node!(r.get(arena), scratch, |n| walk(n, &mut out));
     out
+}
+
+/// Whether the repair can stand for a missing required `sub` of a structure
+/// tagged `parent` (the list of [`Conformer::synthesise`]): a `FORM` of a
+/// `FILE` or `TRAN`, a documented 7.x substructure, or a placeholder for a
+/// leaf of a text or open enumeration type. Nothing else is invented.
+pub(crate) fn synthesisable(schema: &Schema, v7: bool, parent: &str, sub: StructId) -> bool {
+    match (parent, schema.tag(sub)) {
+        (_, "FORM") if parent == "FILE" || parent == "TRAN" => true,
+        ("TRAN", "LANG") | ("ASSO", "ROLE") | ("SLGC", "FAMC") if v7 => true,
+        _ => {
+            let (kind, arg) = schema.kind(sub);
+            let open = kind == Kind::Enum && schema.enum_set(arg).is_some_and(|e| e.open);
+            // A placeholder only stands for a leaf: a structure with
+            // required parts of its own (a FILE needs its FORM) is not
+            // invented.
+            let leaf = schema.subs(sub).iter().all(|s| s.min == 0);
+            (kind == Kind::Text || open) && leaf
+        }
+    }
+}
+
+/// The types of `version` the spec names `names` stand for.
+pub(crate) fn type_ids(version: GedcomVersion, names: &[&str]) -> Vec<StructId> {
+    let schema = version.rules().spec;
+    names
+        .iter()
+        .filter_map(|name| {
+            (1..schema.structs.len())
+                .filter_map(|id| StructId::try_from(id).ok())
+                .find(|&id| index::name_is(schema, usize::from(id), name))
+        })
+        .collect()
+}
+
+/// Whether the conformance repair writes the standard substructure `tag` of
+/// a structure of one of the types `sups` as an extension `_TAG`: when some
+/// type of `sups` has `tag` and lacks a required substructure nothing can
+/// stand for, or when no type of `sups` permits `tag` at all (a standard tag
+/// not permitted here, [`RepairKind::Misplaced`]). `has` tells which
+/// substructure tags the substructure holds. The header is completed by its
+/// own rules, never read back.
+pub(crate) fn repaired_as_extension(
+    version: GedcomVersion,
+    sups: &[StructId],
+    tag: &str,
+    has: impl Fn(&str) -> bool,
+) -> bool {
+    let rules: &VersionRules = version.rules();
+    let schema = rules.spec;
+    let Some(index) = index::of(schema) else {
+        return false;
+    };
+    if sups
+        .iter()
+        .any(|&sup| matches!(schema.name(sup), "HEADER.HEAD" | "HEAD"))
+    {
+        return false;
+    }
+    let v7 = version != GedcomVersion::V5_5_1;
+    let mut permitted = false;
+    for &sup in sups {
+        match pick(rules, sup, tag, false) {
+            Pick::Misplaced => {}
+            Pick::Type(cty) => {
+                permitted = true;
+                let lacks = index.required(cty).any(|cell| {
+                    let name = TAGS[usize::from(cell.tag)];
+                    !has(name) && !synthesisable(schema, v7, tag, cell.first)
+                });
+                if lacks {
+                    return true;
+                }
+            }
+            _ => return false,
+        }
+    }
+    !sups.is_empty() && !permitted
+}
+
+/// The standard tag an extension substructure `ext` (`_TAG`) of a structure
+/// of one of the types `sups` stands for, when the reader reads it back as
+/// that substructure: the writer's repair made it of a standard `TAG` that
+/// has no payload and no extension substructure ([`repaired_as_extension`]).
+/// The caller checks the field that takes the tag. `payload`: whether the
+/// substructure has a payload; `nested`: whether it has an extension
+/// substructure; `has`: the tags of its standard substructures.
+///
+/// The reader ([`crate::model`]) and the conformance pass's order of
+/// substructures ask this one question, so that a repaired structure is
+/// read and ordered alike.
+pub(crate) fn read_back(
+    version: GedcomVersion,
+    sups: &[StructId],
+    ext: &str,
+    payload: bool,
+    nested: bool,
+    has: impl Fn(&str) -> bool,
+) -> Option<u16> {
+    if payload || nested {
+        return None;
+    }
+    let tag = ext.strip_prefix('_')?;
+    let standard = crate::tree::standard_index(tag)?;
+    repaired_as_extension(version, sups, tag, has).then_some(standard)
 }
 
 /// The spelling of `value` in `set`: 5.5.1 matches without regard to case

@@ -64,6 +64,9 @@ pub(crate) struct Arena<'a> {
     /// end are of.
     pub side: &'a str,
     pub side_base: usize,
+    /// The tags the record was read with that are not standard (the
+    /// tree's other tags), by [`NodeRef::name`].
+    pub others: &'a [Box<str>],
 }
 
 impl<'a> Arena<'a> {
@@ -250,6 +253,25 @@ impl<'a> NodeRef<'a> {
         match STANDARD_TAGS.get(id) {
             Some(tag) => tag,
             None => others.get(id - STANDARD_TAGS.len()).map_or("", |t| t),
+        }
+    }
+
+    /// The tag's text: a standard tag's, else the one the record was read
+    /// with ([`Arena::others`]).
+    pub(crate) fn name(self) -> &'a str {
+        self.tag_text(self.arena.others)
+    }
+
+    /// The same node read as the standard tag `tag` (an index of
+    /// [`STANDARD_TAGS`]): what the reader makes of an extension structure
+    /// the conformance repair wrote for it ([`read_tag_of`]).
+    pub(crate) fn read_as(self, tag: u16) -> Self {
+        Self {
+            raw: RawNode {
+                tag: u32::from(tag),
+                ..self.raw
+            },
+            ..self
         }
     }
 
@@ -643,6 +665,11 @@ pub(crate) trait RowFields {
     fn fields(&self) -> &'static [FieldDesc];
     /// The field of each standard tag.
     fn lookup(&self) -> &'static Lookup;
+    /// The names of the structure types the type stands for in `version`
+    /// ([`SpecNames`]); none for a type that stands for none.
+    fn spec_names(&self, _version: GedcomVersion) -> &'static [&'static str] {
+        &[]
+    }
     /// Reads the tag of a type that keeps it; `false` when the type does
     /// not name it.
     fn read_tag(&mut self, node: NodeRef<'_>) -> bool;
@@ -664,6 +691,51 @@ pub(crate) trait RowFields {
     ) -> bool;
     /// Gives back the items of list field `field` reserved and not taken.
     fn finish(&mut self, field: usize, reserved: u32, cx: &mut ReadCx<'_>);
+}
+
+/// The node a substructure is read as. An extension the conformance repair
+/// of the writer made of a standard substructure without a payload, that
+/// the structure's field takes (`_INIL` for an `INIL` the version does not
+/// permit under an `INDI`, `_SLGC` for an `SLGC` without its `FAMC`), is
+/// read as that standard structure, so that it fills the field the standard
+/// tag would fill; any other node is read as it is. `spec`: the structure
+/// types of the reading structure ([`RowFields::spec_names`]).
+fn read_tag_of<'a>(
+    child: NodeRef<'a>,
+    lookup: &Lookup,
+    spec: &[&str],
+    version: GedcomVersion,
+) -> NodeRef<'a> {
+    if (child.tag_id() as usize) < STANDARD_TAGS.len() || spec.is_empty() {
+        return child;
+    }
+    let Some(std) = child
+        .name()
+        .strip_prefix('_')
+        .and_then(crate::tree::standard_index)
+    else {
+        return child;
+    };
+    if lookup.get(usize::from(std)).copied().unwrap_or(0) == 0 {
+        return child;
+    }
+    let nested = child
+        .children()
+        .any(|c| c.tag_id() as usize >= STANDARD_TAGS.len());
+    let types = crate::spec::conform::type_ids(version, spec);
+    let read = crate::spec::conform::read_back(
+        version,
+        &types,
+        child.name(),
+        !child.has_no_payload(),
+        nested,
+        |t| child.children().any(|c| c.standard_tag() == Some(t)),
+    );
+    if read.is_some() {
+        child.read_as(std)
+    } else {
+        child
+    }
 }
 
 /// Reads a structure into its row ([`RowFields`]): its identifier, tag and
@@ -708,9 +780,11 @@ pub(crate) fn read_row_into(
     let lookup = s.lookup();
     let counts = cx.scratch.counts.len();
     let lists = cx.scratch.lists.len();
+    let spec = s.spec_names(cx.version);
     if node.has_children() {
         cx.scratch.counts.resize(counts + fields.len(), 0);
         for child in node.children() {
+            let child = read_tag_of(child, lookup, spec, cx.version);
             let field = usize::from(lookup.get(child.tag_id() as usize).copied().unwrap_or(0));
             if field > 0
                 && fields.get(field - 1).is_some_and(|f| f.many)
@@ -734,7 +808,8 @@ pub(crate) fn read_row_into(
     // The standard tags already sent aside, as a bit set.
     let mut sent = [0_u64; STANDARD_TAGS.len().div_ceil(64)];
     for child in node.children() {
-        let tag = child.tag_id() as usize;
+        let read = read_tag_of(child, lookup, spec, cx.version);
+        let tag = read.tag_id() as usize;
         let field = usize::from(lookup.get(tag).copied().unwrap_or(0));
         let (word, bit) = (tag / 64, 1_u64 << (tag % 64));
         let blocked = sent.get(word).is_some_and(|w| w & bit != 0);
@@ -747,7 +822,7 @@ pub(crate) fn read_row_into(
         } else {
             0
         };
-        if field == 0 || blocked || !s.accept(field - 1, child, reserved, cx) {
+        if field == 0 || blocked || !s.accept(field - 1, read, reserved, cx) {
             if let Some(w) = sent.get_mut(word).filter(|_| field != 0) {
                 *w |= bit;
             }
@@ -1861,6 +1936,17 @@ pub struct SpecNames {
     pub v70: &'static [&'static str],
     /// GEDCOM 7.1.
     pub v71: &'static [&'static str],
+}
+
+impl SpecNames {
+    /// The names of the structure types of `version`.
+    pub(crate) fn of(&self, version: GedcomVersion) -> &'static [&'static str] {
+        match version {
+            GedcomVersion::V5_5_1 => self.v551,
+            GedcomVersion::V7_0 => self.v70,
+            GedcomVersion::V7_1 => self.v71,
+        }
+    }
 }
 
 /// A field of a typed structure.
@@ -3020,6 +3106,10 @@ macro_rules! gedcom_struct {
 
             fn lookup(&self) -> &'static $crate::model::driver::Lookup {
                 &<$name as $crate::model::driver::Struct>::LOOKUP
+            }
+
+            fn spec_names(&self, version: $crate::GedcomVersion) -> &'static [&'static str] {
+                <$name as $crate::model::driver::Struct>::SPEC.of(version)
             }
 
             fn read_tag(&mut self, node: $crate::model::driver::NodeRef<'_>) -> bool {

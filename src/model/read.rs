@@ -18,6 +18,8 @@ use crate::tree::{
 };
 use crate::version::GedcomVersion;
 
+use std::rc::Rc;
+
 use super::dataset::Dataset;
 use super::driver::{Arena, NodeRef, ReadCx, Scratch};
 use super::edit::RecordKind;
@@ -179,7 +181,7 @@ pub(crate) fn read_segmented(text: String, limit: usize) -> Dataset {
         for (start, end, first_line) in segment_bounds(input, limit) {
             let part = input.get(start..end).unwrap_or_default();
             builder.reset(first_line);
-            builder.read_records(part, &mut tags, |b, _| {
+            builder.read_records(part, &mut tags, |b, tags| {
                 let arena = Arena {
                     text: part,
                     base: start,
@@ -189,6 +191,7 @@ pub(crate) fn read_segmented(text: String, limit: usize) -> Dataset {
                     input,
                     side: "",
                     side_base: 0,
+                    others: &tags.others,
                 };
                 if let Some(root) = NodeRef::root(&arena) {
                     dispatch_record(root, &mut cx, &mut sink);
@@ -692,6 +695,7 @@ pub(crate) fn read_interpreting(
         input_len,
         side: String::new(),
         gave_up: false,
+        names: Rc::from([]),
         prints,
         print_of: Vec::new(),
         unseen_prints: false,
@@ -781,6 +785,10 @@ struct Pass<'p, 'r> {
     side: String,
     /// Whether the file is to be interpreted whole.
     gave_up: bool,
+    /// A copy of the tags the record reads are named by (the tags only
+    /// grow, so a copy of the same length is the same): held apart from
+    /// the tags, which the record's own reading may intern into.
+    names: Rc<[Box<str>]>,
     prints: &'p mut Vec<&'static str>,
     /// By tag past the standard ones: the fingerprint it is, if any.
     print_of: Vec<Option<&'static str>>,
@@ -825,6 +833,10 @@ impl Pass<'_, '_> {
         // where it stands (offsets past 31 bits aside), its structures
         // looked at once.
         let fast = self.input_len + self.side.len() < Arena::INPUT as usize / 2;
+        if self.names.len() != tags.others.len() {
+            self.names = Rc::from(tags.others.as_slice());
+        }
+        let names = Rc::clone(&self.names);
         let splices = {
             let arena = Arena {
                 text: part,
@@ -835,6 +847,7 @@ impl Pass<'_, '_> {
                 input,
                 side: "",
                 side_base: 0,
+                others: &names,
             };
             self.fingerprints(&arena, tags);
             let Some(root) = NodeRef::root(&arena) else {
@@ -910,6 +923,7 @@ impl Pass<'_, '_> {
             input,
             side: &written,
             side_base: side,
+            others: &tags.others,
         };
         if let Some(root) = NodeRef::root(&arena) {
             self.place(root, &mut cx.with_text(&written, side), sink, false);
@@ -1178,6 +1192,7 @@ impl Pass<'_, '_> {
                     input,
                     side: "",
                     side_base: 0,
+                    others: &tags.others,
                 };
                 if let Some(root) = NodeRef::root(&arena) {
                     self.place(root, &mut cx.with_text(&written, base), sink, holder);
@@ -1208,7 +1223,7 @@ impl Pass<'_, '_> {
         let base = self.input_len + self.side.len();
         let mut again = std::mem::replace(&mut self.again, Builder::new(self.escaping, 1));
         again.reset(1);
-        again.read_records(&written, tags, |b, _| {
+        again.read_records(&written, tags, |b, tags| {
             let arena = Arena {
                 text: &written,
                 base,
@@ -1218,6 +1233,7 @@ impl Pass<'_, '_> {
                 input,
                 side: "",
                 side_base: 0,
+                others: &tags.others,
             };
             if let Some(root) = NodeRef::root(&arena) {
                 self.place(root, &mut cx.with_text(&written, base), sink, holder);
@@ -1347,7 +1363,7 @@ fn retype_all(
         let text = input.get(start..start + len).unwrap_or_default();
 
         builder.reset(1);
-        builder.read_records(text, tags, |b, _| {
+        builder.read_records(text, tags, |b, tags| {
             let arena = Arena {
                 text,
                 base: start,
@@ -1357,6 +1373,7 @@ fn retype_all(
                 input,
                 side: "",
                 side_base: 0,
+                others: &tags.others,
             };
             let Some(root) = NodeRef::root(&arena) else {
                 return;
@@ -1512,7 +1529,7 @@ impl RecordReader {
             let input = parts.text;
             let mut cx = ReadCx::new(parts, tables, &mut self.scratch, self.version);
             self.builder.reset(first_line);
-            self.builder.read_records(input, &mut tags, |b, _| {
+            self.builder.read_records(input, &mut tags, |b, tags| {
                 let arena = Arena {
                     text: input,
                     base: 0,
@@ -1522,6 +1539,7 @@ impl RecordReader {
                     input,
                     side: "",
                     side_base: 0,
+                    others: &tags.others,
                 };
                 if let Some(root) = NodeRef::root(&arena) {
                     dispatch_record(root, &mut cx, &mut sink);

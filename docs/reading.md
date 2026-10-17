@@ -3,7 +3,7 @@ type: "Feature Reference"
 title: "Reading"
 description: "How oxidged reads any GEDCOM input without failing or losing data: decoding, line rules, typing, the builder's inputs and options, strict mode and the read report."
 tags: [oxidged, reading, builder, encodings]
-generated: { by: human:maintainer, at: 2026-10-17T11:42:19Z }
+generated: { by: human:maintainer, at: 2026-10-17T19:29:24Z }
 ---
 
 # Reading
@@ -27,7 +27,9 @@ silent rules:
 Each record is then typed as far as it fits the model. What a type has no
 field for — an extension, an unknown tag, a second occurrence of a
 structure that occurs once, a structure of another shape — is kept in its
-`extra`, in order, where it was, and written back. An enumeration value no
+`extra`, in order, where it was, and written back. The one exception is an
+extension the writer's own repair made of a standard structure: it is read
+as that structure, where the field takes it ([Conversion](conversion.md)). An enumeration value no
 variant names is kept as written (`Pedigree::Unknown("stepchild")`), as is
 any date, age or time: their grammars read them on demand.
 

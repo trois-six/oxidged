@@ -3,7 +3,7 @@ type: "Feature Reference"
 title: "Conversion"
 description: "How a dataset is converted between GEDCOM 5.5.1 and 7.x, as the FamilySearch migration guide says, when it is written or on demand."
 tags: [oxidged, conversion, gedcom-7]
-generated: { by: human:maintainer, at: 2026-10-17T11:42:19Z }
+generated: { by: human:maintainer, at: 2026-10-17T19:29:24Z }
 ---
 
 # Conversion
@@ -35,6 +35,38 @@ has no place for is kept as extension structures. With
 structures 7.x drops are kept as extensions `HEAD.SCHMA` declares with their
 5.5.1 URIs, and restored when converting back, so that 5.5.1 data survives a
 round trip through 7.x.
+
+The reader reads the writer's own repairs back as the structures they stand
+for, so that a dataset written to a version and read again is the dataset
+that was written. An extension `_TAG` the conformance repair made of a
+standard `TAG` is read as `TAG`, in the field the standard tag fills, when
+all of these hold: it has no value and no extension substructure; it stands
+directly under a structure whose typed field takes `TAG`; and the version
+does not permit `TAG` there, or permits it but `TAG` lacks a required part
+nothing can stand for. The header, a structure with a value and a structure
+with an extension substructure are read as written. Written back, the
+dataset repairs to the same extensions in the version it was written to,
+byte for byte, and to the standard tags in 7.x.
+
+The structures read back, by the version the repair is made for:
+
+| Version | Under | Extension of a standard structure (its repair) |
+|---|---|---|
+| 5.5.1 | `INDI` | `_INIL` (no 5.5.1 place); `_CREA` (no 5.5.1 place); `_SLGC` without its `FAMC`; `_CHAN` without its `DATE`; `_OBJE` without its `FILE` |
+| 5.5.1 | `FAM`, `OBJE`, `SOUR`, `NOTE`, `REPO`, `SUBM`, `SUBN` | `_CHAN` without its `DATE`; `_CREA` (no 5.5.1 place); `_OBJE` without its `FILE` (`SOUR`, `SUBM`, `FAM`) |
+| 5.5.1 | `PLAC` | `_MAP` without its `LATI` and `LONG` |
+| 5.5.1 | the object link of `INDI`, `FAM`, `SOUR`, `SUBM` | `_CROP` (no 5.5.1 place) |
+| 5.5.1 | a family event (`HUSB`, `WIFE`) and its `OBJE` | `_HUSB` and `_WIFE` without their `AGE`; `_OBJE` without its `FILE` |
+| 5.5.1 | a note | `_SOUR` (no 5.5.1 place) |
+| 7.0, 7.1 | `INDI`, `FAM`, `OBJE`, `SOUR`, `NOTE`, `REPO`, `SUBM`, `SUBN` | `_CHAN` and `_CREA` without their `DATE` |
+| 7.0, 7.1 | `PLAC` | `_MAP` without its `LATI` and `LONG` |
+| 7.0, 7.1 | a family event (`HUSB`, `WIFE`) | `_HUSB` and `_WIFE` without their `AGE` |
+
+Only the structures without a value are listed: a repaired structure with
+a value (a pointer, a date, a text such as `_UID`, `_SNOTE`, `_RFN`) is kept
+as an extension, as the writer leaves it. The header is read as written, its
+extensions (`_SCHMA` among them) keeping their place, since the header is
+completed by its own rules.
 
 ```rust
 use oxidged::convert::{convert_dataset, ConversionOptions};

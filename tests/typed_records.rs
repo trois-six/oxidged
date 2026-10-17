@@ -796,3 +796,69 @@ fn file_formats_outside_the_551_list_are_kept() {
     let out = write_as(&data, GedcomVersion::V5_5_1);
     assert_has(&out, "1 FILE photo.png\n2 FORM png\n");
 }
+
+/// The writer repairs a standard structure the version does not permit, or
+/// that lacks a required part nothing can stand for, into an extension of
+/// its tag (`_INIL` for an `INIL` in 5.5.1, `_SLGC` for an `SLGC` without
+/// its `FAMC`). Read back, such an extension is the structure it stands for,
+/// in the field the standard tag fills: the dataset written as 5.5.1 reads
+/// as the one that was written, writes back to 5.5.1 unchanged, and writes
+/// to 7.x with the standard tags.
+#[test]
+fn repaired_ordinances_read_back_as_ordinances() {
+    let data = Dataset::parse(v7(
+        "0 @I1@ INDI\n1 INIL\n2 DATE 1 JAN 1900\n1 SLGC\n2 DATE 2 FEB 1901\n",
+    ));
+    let written = write_as(&data, GedcomVersion::V5_5_1);
+    assert_has(&written, "1 _INIL\n2 DATE 1 JAN 1900\n");
+    assert_has(&written, "1 _SLGC\n2 DATE 2 FEB 1901\n");
+
+    let back = Dataset::parse(&written);
+    let record = back.find_individual("@I1@").unwrap().into_owned();
+    let ords = &record.detail().ordinances;
+    assert_eq!(
+        ords.iter().map(|o| o.kind).collect::<Vec<_>>(),
+        [OrdinanceKind::Initiatory, OrdinanceKind::ChildSealing]
+    );
+    assert!(ords[1].family.is_none());
+    assert_eq!(write_as(&back, GedcomVersion::V5_5_1), written);
+    let v7_out = write_as(&back, GedcomVersion::V7_0);
+    assert_has(&v7_out, "1 INIL\n2 DATE 1 JAN 1900\n");
+    assert_has(&v7_out, "1 SLGC\n2 DATE 2 FEB 1901\n2 FAMC @VOID@\n");
+
+    // Read directly from 5.5.1 text, the same structures are typed too.
+    let direct = Dataset::parse(v551("0 @I1@ INDI\n1 _INIL\n2 DATE 1 JAN 1900\n"));
+    let record = direct.find_individual("@I1@").unwrap().into_owned();
+    assert_eq!(
+        record.detail().ordinances[0].kind,
+        OrdinanceKind::Initiatory
+    );
+}
+
+/// The reading is no wider than the writer's repair: an extension of a tag
+/// the version permits where it stands is an extension, and stays one.
+#[test]
+fn extension_of_a_permitted_ordinance_stays_an_extension() {
+    let data = Dataset::parse(v7("0 @I1@ INDI\n1 _INIL\n2 DATE 1 JAN 1900\n"));
+    let record = data.find_individual("@I1@").unwrap().into_owned();
+    assert!(record.detail().ordinances.is_empty());
+    assert_has(&write(&data), "1 _INIL\n2 DATE 1 JAN 1900\n");
+}
+
+/// A structure only 7.x has, written to 5.5.1 as its extension, reads back as
+/// the structure it stands for: a creation date (`CREA`) of an individual.
+#[test]
+fn repaired_creation_date_reads_back_as_creation_date() {
+    let data = Dataset::parse(v7("0 @I1@ INDI\n1 CREA\n2 DATE 1 JAN 1900\n"));
+    let written = write_as(&data, GedcomVersion::V5_5_1);
+    assert_has(&written, "1 _CREA\n2 DATE 1 JAN 1900\n");
+
+    let back = Dataset::parse(&written);
+    let record = back.find_individual("@I1@").unwrap().into_owned();
+    assert!(record.detail().creation.is_some());
+    assert_eq!(write_as(&back, GedcomVersion::V5_5_1), written);
+    assert_has(
+        &write_as(&back, GedcomVersion::V7_0),
+        "1 CREA\n2 DATE 1 JAN 1900\n",
+    );
+}
