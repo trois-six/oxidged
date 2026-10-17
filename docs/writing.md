@@ -3,7 +3,7 @@ type: "Feature Reference"
 title: "Writing"
 description: "How oxidged writes strictly conformant GEDCOM 5.5.1, 7.0 or 7.1: line rules, the header, the conformance repair, output options and the write report."
 tags: [oxidged, writing, conformance]
-generated: { by: human:maintainer, at: 2026-10-17T11:42:19Z }
+generated: { by: human:maintainer, at: 2026-10-17T20:10:00Z }
 ---
 
 # Writing
@@ -29,8 +29,10 @@ where a pointer belongs, a date outside the grammar, a structure the
 version does not permit or permits once, a missing required substructure,
 and in 7.x an `ALIA` to its own record or a pointer that closes a cycle of
 source, multimedia and shared note records (GEDCOM 7.0.17). Nothing is
-dropped: data with no standard form becomes an extension
-structure (`_TAG`), or 7.x `OTHER`/`@VOID@` with a `PHRASE`. Dates, ages and
+dropped but what the version cannot hold: data with no standard form becomes
+an extension structure (`_TAG`), or 7.x `OTHER`/`@VOID@` with a `PHRASE`; a
+7.x structure with neither a value nor a substructure (`1 BAPL` alone) is
+not permitted (GEDCOM 7.0 §1.2), so it is left out, and reported as `Empty`. Dates, ages and
 times are written in the target's grammar (`@#DJULIAN@` and `JULIAN`,
 `B.C.` and `BCE`, `INT … (…)` and `PHRASE`). Each repair is reported as a
 `Repair`; `.on_nonconformant(RepairPolicy::Error)` makes the writer fail

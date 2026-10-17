@@ -862,3 +862,29 @@ fn repaired_creation_date_reads_back_as_creation_date() {
         "1 CREA\n2 DATE 1 JAN 1900\n",
     );
 }
+
+/// A structure with neither a value nor a substructure is not permitted in
+/// 7.x (§1.2: "A structure must have either a non-empty payload or at least 1
+/// substructure"): the writer leaves it out and reports it. 5.5.1 permits it,
+/// and writes it. A structure with a value, or with a substructure, is kept.
+#[test]
+fn empty_structures_are_left_out_of_7_0_and_reported() {
+    let data = Dataset::parse(v551("0 @I1@ INDI\n1 BAPL\n1 CONL\n2 DATE 1 JAN 1900\n"));
+    let (out, report) = GedcomWriter::new()
+        .gedcom_version(GedcomVersion::V7_0)
+        .write_to_string_with_report(&data)
+        .unwrap();
+    assert!(!out.contains("BAPL"), "{out}");
+    assert_has(&out, "1 CONL\n2 DATE 1 JAN 1900\n");
+    assert!(
+        report
+            .repairs
+            .iter()
+            .any(|r| r.kind == oxidged::spec::RepairKind::Empty
+                && &*r.detail == "INDI.BAPL: empty, left out"),
+        "{:?}",
+        report.repairs
+    );
+    assert_has(&write_as(&data, GedcomVersion::V5_5_1), "1 BAPL\n1 CONL\n");
+    assert_eq!(write_as(&Dataset::parse(&out), GedcomVersion::V7_0), out);
+}
