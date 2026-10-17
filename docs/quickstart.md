@@ -3,7 +3,7 @@ type: "Quickstart Guide"
 title: "oxidged Quickstart"
 description: "Installing oxidged and its optional features, then reading and writing a first file."
 tags: [oxidged, quickstart, installation]
-generated: { by: human:maintainer, at: 2026-10-17T11:42:19Z }
+generated: { by: human:maintainer, at: 2026-10-17T14:44:00Z }
 ---
 
 # oxidged Quickstart
@@ -21,7 +21,7 @@ or, in `Cargo.toml`:
 
 ```toml
 [dependencies]
-oxidged = "0.2"
+oxidged = "0.3"
 ```
 
 The minimum supported Rust version is 1.88.
