@@ -31,6 +31,10 @@ version does not permit and reporting each repair. A command-line tool,
   exports shaped for 23 importers, every lossy fold reported.
 - **Validation**: every deviation of a file from its specification, with its
   line; an opt-in strict mode; a repair that makes any tree conformant.
+- **[Tested for conformance](docs/development.md#test-suites)**: the 82
+  official test files of FamilySearch and gedcom7code, plus some 6,800 cases
+  generated from the specifications or written by hand, run against an
+  independent checker.
 - **Editing**: add, remove, rename and link records with their references
   kept whole; ancestors, descendants and subsets of a tree.
 - **Streaming**: read and write one record at a time, in bounded memory.
