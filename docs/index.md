@@ -5,7 +5,7 @@ okf_version: "0.2"
 # Getting started
 
 * [oxidged Quickstart](quickstart.md) - Installing oxidged and its optional features, then reading and writing a first file.
-* [Command Line](cli.md) - The oxidged command of the oxidged-cli package: its options, outputs and exit codes.
+* [Command Line](cli.md) - The oxidged command of the oxidged-cli package: its commands, their reading and writing options, their text and JSON outputs, and its exit codes.
 
 # Library
 
@@ -30,4 +30,4 @@ okf_version: "0.2"
 
 * [Performance](performance.md) - Time, throughput and peak memory of oxidged's pipelines, measured against ged_io 0.17.0, and how they are measured and checked.
 * [Development](development.md) - Building and checking oxidged: the workspace, the test suites, the conformance corpora, fuzzing, the tools and the CI workflows.
-* [Roadmap](roadmap.md) - The work planned for oxidged: the command-line tool, the producer profiles, GEDCOM 7.1 and the known conformance gaps.
+* [Roadmap](roadmap.md) - The work planned for oxidged: the producer profiles, GEDCOM 7.1 and the known conformance gaps.

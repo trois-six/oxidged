@@ -1,6 +1,7 @@
 # oxidged-cli
 
-The `oxidged` command: inspect, validate, repair, convert and export
+The `oxidged` command: inspect, validate, repair, convert, export, edit and
+extract
 [GEDCOM](https://en.wikipedia.org/wiki/GEDCOM) 5.5.1, 7.0 and 7.1 files,
 built on the [`oxidged`](https://crates.io/crates/oxidged) library.
 
@@ -9,33 +10,21 @@ cargo install oxidged-cli
 ```
 
 ```bash
-# A summary: version, records, pointers to no record
-oxidged family.ged
-
-# One individual, or every individual whose surname contains EXAMPLE
-oxidged --individual @I1@ family.ged
-oxidged --individual-lastname example family.ged
-
-# Check a file against the specification of the version it declares
-oxidged --validate --validation-level strict family.ged
-
-# Rewrite any file as conformant GEDCOM 7.0 (repairs on standard error),
-# converting a 5.5.1 file; --keep-obsolete keeps what 7.0 drops as extensions
-oxidged --write 7.0 family.ged > family70.ged
-
-# Repair a file in its own version; re-encode a 5.5.1 file
-oxidged --sanitize family.ged > clean.ged
-oxidged --sanitize --convert-encoding ANSEL family.ged > family-ansel.ged
-
-# Which program wrote it; a file for an importer (lossy folds on standard error)
-oxidged --detect family.ged
-oxidged --profile geneanet family.ged > for-geneanet.ged
-oxidged --list-profiles
+oxidged info family.ged                            # version, encoding, producer, records
+oxidged validate family.ged                        # every deviation, with its line
+oxidged write family.ged -g 7.0 -o family70.ged    # conformant GEDCOM 7.0
+oxidged write family.ged -o family.gdz --media-dir photos/
+oxidged export family.ged -p geneanet -o out.ged   # a file for an importer
+oxidged ancestors family.ged @I1@ --generations 4
+oxidged subset family.ged --descendants-of @I1@ -o branch.ged
+oxidged edit rename family.ged @I1@ @ANN@ -o renamed.ged
+oxidged --json info family.ged                     # any report as JSON
 ```
 
-`oxidged --help` lists every option; the
+`oxidged --help` and `oxidged <command> --help` describe every option, and
+the
 [command-line documentation](https://github.com/trois-six/oxidged/blob/main/docs/cli.md)
-describes each. Exit codes: 0 success, 1 I/O error,
-2 validation errors in strict mode, 3 usage error.
+every command. Exit codes: 0 success, 1 an input, output or edit error, 2 a
+deviation from the specification, 3 a usage error.
 
 Licensed under the [MIT License](license.md).

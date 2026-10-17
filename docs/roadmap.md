@@ -1,25 +1,15 @@
 ---
 type: "Roadmap"
 title: "Roadmap"
-description: "The work planned for oxidged: the command-line tool, the producer profiles, GEDCOM 7.1 and the known conformance gaps."
+description: "The work planned for oxidged: the producer profiles, GEDCOM 7.1 and the known conformance gaps."
 tags: [oxidged, roadmap]
-generated: { by: human:maintainer, at: 2026-10-17T11:42:19Z }
+generated: { by: human:maintainer, at: 2026-10-17T14:06:10Z }
 ---
 
 # Roadmap
 
 > Part of the [oxidged documentation](index.md).
 > See also: [Development](development.md)
-
-## Command-line tool
-
-`oxidged` becomes a set of subcommands built on `clap`, exposing what the
-library does: reading options (encoding, strict mode, producer,
-interpretation, read report), every writer and export option, GEDZIP and JSON
-input and output, the lossless tree, encodings, producer profiles and their
-interpretation, lookups and navigation, editing, subsets of a dataset,
-streaming, dates and ages, reports in JSON, shell completions and a manual
-page. The command line of version 0.2 is replaced, not kept beside it.
 
 ## Producer profiles
 

@@ -40,6 +40,9 @@ version does not permit and reporting each repair. A command-line tool,
   serialization and calendar arithmetic, as optional features.
 - **Fast**: about twice the input's size in memory, hundreds of megabytes a
   second ([Performance](docs/performance.md)).
+- **[Command line](docs/cli.md)**: `oxidged` does the same from a shell —
+  inspect, validate, convert, export, edit, extract branches, read dates —
+  on GEDCOM, GEDZIP and JSON, with reports as text or JSON.
 
 ## Quick start
 
@@ -55,10 +58,11 @@ The command-line tool:
 ```bash
 cargo install oxidged-cli
 
-oxidged family.ged                              # a summary
-oxidged --validate family.ged                   # every deviation, with its line
-oxidged --write 7.0 family.ged > family70.ged   # conformant GEDCOM 7.0
-oxidged --profile geneanet family.ged > out.ged # a file for an importer
+oxidged info family.ged                            # version, encoding, producer, records
+oxidged validate family.ged                        # every deviation, with its line
+oxidged write family.ged -g 7.0 -o family70.ged    # conformant GEDCOM 7.0
+oxidged export family.ged -p geneanet -o out.ged   # a file for an importer
+oxidged subset family.ged --descendants-of @I1@ -o branch.gdz
 ```
 
 Every option is in [Command Line](docs/cli.md).
