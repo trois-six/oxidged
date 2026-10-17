@@ -888,3 +888,50 @@ fn empty_structures_are_left_out_of_7_0_and_reported() {
     assert_has(&write_as(&data, GedcomVersion::V5_5_1), "1 BAPL\n1 CONL\n");
     assert_eq!(write_as(&Dataset::parse(&out), GedcomVersion::V7_0), out);
 }
+
+/// The writer repairs an event's `FAMC` (`EVEN` permits none) into `_FAMC`,
+/// a pointer payload of the standard `FAMC`. Read back, the extension is the
+/// `FAMC` it stands for, so the event's family is the family the pointer
+/// names, in 7.x and 5.5.1 alike, and the text written again is unchanged.
+#[test]
+fn repaired_family_pointer_of_an_event_reads_back_as_the_family() {
+    let body = "0 @I1@ INDI\n1 EVEN Sealed with siblings\n2 TYPE SLGC\n2 FAMC @F1@\n1 FAMC @F1@\n0 @F1@ FAM\n1 CHIL @I1@\n";
+    let data = Dataset::parse(v7(body));
+    // The identifier of the event's family, as its text: identifiers are
+    // numbered per dataset.
+    let family_of = |data: &Dataset| {
+        let record = data.find_individual("@I1@").unwrap().into_owned();
+        let family = record.events[0].detail().family.as_ref().unwrap().family;
+        family.map(|id| data.store().xref(id).to_string())
+    };
+    assert_eq!(family_of(&data).as_deref(), Some("@F1@"));
+    for version in [GedcomVersion::V7_0, GedcomVersion::V5_5_1] {
+        let written = write_as(&data, version);
+        assert_has(
+            &written,
+            "1 EVEN Sealed with siblings\n2 TYPE SLGC\n2 _FAMC @F1@\n",
+        );
+
+        let back = Dataset::parse(&written);
+        assert_eq!(family_of(&back).as_deref(), Some("@F1@"));
+        assert_eq!(write_as(&back, version), written);
+    }
+}
+
+/// A repaired `FAMC` whose payload is text stays an extension: the text is
+/// no family, so the event has none, and the extension is written back as it
+/// was read.
+#[test]
+fn repaired_family_text_of_an_event_stays_an_extension() {
+    let data = Dataset::parse(v7(
+        "0 @I1@ INDI\n1 EVEN Sealed with siblings\n2 TYPE SLGC\n2 _FAMC Some family\n",
+    ));
+    let record = data.find_individual("@I1@").unwrap().into_owned();
+    assert!(record.events[0].detail().family.is_none());
+    let written = write_as(&data, GedcomVersion::V7_0);
+    assert_has(&written, "2 _FAMC Some family\n");
+    assert_eq!(
+        write_as(&Dataset::parse(&written), GedcomVersion::V7_0),
+        written
+    );
+}

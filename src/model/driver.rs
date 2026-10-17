@@ -699,14 +699,19 @@ pub(crate) trait RowFields {
 }
 
 /// The node a substructure is read as. An extension the conformance repair
-/// of the writer made of a standard substructure without a payload, that
-/// the structure's field takes (`_INIL` for an `INIL` the version does not
-/// permit under an `INDI`, `_SLGC` for an `SLGC` without its `FAMC`), is
-/// read as that standard structure, so that it fills the field the standard
-/// tag would fill; any other node is read as it is. `spec`: the structure
-/// types of the reading structure ([`RowFields::spec_names`]).
+/// of the writer made of a standard substructure, that the structure's
+/// field takes, is read as that standard structure, so that it fills the
+/// field the standard tag would fill: one without a payload (`_INIL` for an
+/// `INIL` the version does not permit under an `INDI`, `_SLGC` for an `SLGC`
+/// without its `FAMC`), or one whose pointer payload the standard tag takes
+/// (`_FAMC @F1@` under an `EVEN`). Any other node, a text payload included,
+/// is read as it is. `parent`: the structure the substructure is of; `spec`:
+/// the structure types of the reading structure
+/// ([`RowFields::spec_names`]), of which the parent's own tag is the type the
+/// substructure is read in.
 fn read_tag_of<'a>(
     child: NodeRef<'a>,
+    parent: NodeRef<'_>,
     lookup: &Lookup,
     spec: &[&str],
     cx: &ReadCx<'_>,
@@ -728,15 +733,17 @@ fn read_tag_of<'a>(
         .children()
         .any(|c| c.tag_id() as usize >= STANDARD_TAGS.len());
     let version = cx.version;
-    let types = crate::spec::conform::type_ids(version, spec);
-    let read = crate::spec::conform::read_back(
-        version,
-        &types,
-        child.name(),
-        !child.has_no_payload(),
-        nested,
-        |t| child.children().any(|c| c.standard_tag() == Some(t)),
-    );
+    let types = crate::spec::conform::type_ids(version, spec, parent.name());
+    let body = if child.is_pointer() {
+        crate::spec::conform::ExtBody::Pointer
+    } else if child.has_no_payload() {
+        crate::spec::conform::ExtBody::None
+    } else {
+        crate::spec::conform::ExtBody::Text
+    };
+    let read = crate::spec::conform::read_back(version, &types, child.name(), body, nested, |t| {
+        child.children().any(|c| c.standard_tag() == Some(t))
+    });
     if read.is_some() {
         child.read_as(std)
     } else {
@@ -790,7 +797,7 @@ pub(crate) fn read_row_into(
     if node.has_children() {
         cx.scratch.counts.resize(counts + fields.len(), 0);
         for child in node.children() {
-            let child = read_tag_of(child, lookup, spec, cx);
+            let child = read_tag_of(child, node, lookup, spec, cx);
             let field = usize::from(lookup.get(child.tag_id() as usize).copied().unwrap_or(0));
             if field > 0
                 && fields.get(field - 1).is_some_and(|f| f.many)
@@ -814,7 +821,7 @@ pub(crate) fn read_row_into(
     // The standard tags already sent aside, as a bit set.
     let mut sent = [0_u64; STANDARD_TAGS.len().div_ceil(64)];
     for child in node.children() {
-        let read = read_tag_of(child, lookup, spec, cx);
+        let read = read_tag_of(child, node, lookup, spec, cx);
         let tag = read.tag_id() as usize;
         let field = usize::from(lookup.get(tag).copied().unwrap_or(0));
         let (word, bit) = (tag / 64, 1_u64 << (tag % 64));

@@ -42,13 +42,13 @@
 2 _SDATE 1 JAN 1850
 1 BAPM
 2 DATE 3 JAN 1850
-2 NOTE Witness: The parish clerk (Clerk)
 2 _ASSO @I3@
 3 RELA godparent
 2 _ASSO @I4@
 3 RELA godparent
 2 _ASSO @I5@
 3 RELA witness
+2 NOTE Witness: The parish clerk (Clerk)
 1 BURI
 2 DATE 31 FEB 1920
 2 ADDR 1 Cemetery Road

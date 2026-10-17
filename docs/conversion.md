@@ -3,7 +3,7 @@ type: "Feature Reference"
 title: "Conversion"
 description: "How a dataset is converted between GEDCOM 5.5.1 and 7.x, as the FamilySearch migration guide says, when it is written or on demand."
 tags: [oxidged, conversion, gedcom-7]
-generated: { by: human:maintainer, at: 2026-10-17T19:29:24Z }
+generated: { by: human:maintainer, at: 2026-10-17T22:12:42Z }
 ---
 
 # Conversion
@@ -40,13 +40,14 @@ The reader reads the writer's own repairs back as the structures they stand
 for, so that a dataset written to a version and read again is the dataset
 that was written. An extension `_TAG` the conformance repair made of a
 standard `TAG` is read as `TAG`, in the field the standard tag fills, when
-all of these hold: it has no value and no extension substructure; it stands
+all of these hold: its value is none, or a pointer that the standard `TAG`
+takes (a text value is kept); it has no extension substructure; it stands
 directly under a structure whose typed field takes `TAG`; and the version
-does not permit `TAG` there, or permits it but `TAG` lacks a required part
-nothing can stand for. The header, a structure with a value and a structure
-with an extension substructure are read as written. Written back, the
-dataset repairs to the same extensions in the version it was written to,
-byte for byte, and to the standard tags in 7.x.
+does not permit `TAG` there in the form its value selects, or permits it but
+`TAG` lacks a required part nothing can stand for. The header, a structure
+with a text value and a structure with an extension substructure are read as
+written. Written back, the dataset repairs to the same extensions in the
+version it was written to, byte for byte, and to the standard tags in 7.x.
 
 The structures read back, by the version the repair is made for:
 
@@ -58,15 +59,22 @@ The structures read back, by the version the repair is made for:
 | 5.5.1 | the object link of `INDI`, `FAM`, `SOUR`, `SUBM` | `_CROP` (no 5.5.1 place) |
 | 5.5.1 | a family event (`HUSB`, `WIFE`) and its `OBJE` | `_HUSB` and `_WIFE` without their `AGE`; `_OBJE` without its `FILE` |
 | 5.5.1 | a note | `_SOUR` (no 5.5.1 place) |
+| 5.5.1 | an individual event that does not take `FAMC` (`EVEN`) | `_FAMC` (a pointer to the family) |
 | 7.0, 7.1 | `INDI`, `FAM`, `OBJE`, `SOUR`, `NOTE`, `REPO`, `SUBM`, `SUBN` | `_CHAN` and `_CREA` without their `DATE` |
 | 7.0, 7.1 | `PLAC` | `_MAP` without its `LATI` and `LONG` |
 | 7.0, 7.1 | a family event (`HUSB`, `WIFE`) | `_HUSB` and `_WIFE` without their `AGE` |
+| 7.0, 7.1 | an individual event that does not take `FAMC` (`EVEN`) | `_FAMC` (a pointer to the family) |
 
-Only the structures without a value are listed: a repaired structure with
-a value (a pointer, a date, a text such as `_UID`, `_SNOTE`, `_RFN`) is kept
-as an extension, as the writer leaves it. The header is read as written, its
-extensions (`_SCHMA` among them) keeping their place, since the header is
-completed by its own rules.
+Only the structures whose value is none or a pointer are listed: a repaired
+structure with a text value (a date, a text such as `_UID`, `_RFN`) is kept
+as an extension, as the writer leaves it. A pointer is read back as well
+where the standard tag takes one: an event's `FAMC` that `EVEN` does not
+permit is written `_FAMC @F1@` and reads back as the family of the event. A
+pointer the writer repaired for naming a record of another type (`_OBJE`
+naming a family) is not read back: the writer repaired it for its target,
+not for its place, and the standard tag is permitted there. The header is
+read as written, its extensions (`_SCHMA` among them) keeping their place,
+since the header is completed by its own rules.
 
 ```rust
 use oxidged::convert::{convert_dataset, ConversionOptions};

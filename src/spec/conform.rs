@@ -168,7 +168,7 @@ impl ModelRead {
                 version,
                 &[ty],
                 c.tag(),
-                !matches!(c.payload(), PayloadRef::None),
+                ExtBody::of(c.payload()),
                 c.children().any(|g| g.standard_tag().is_none()),
                 |t| c.children().any(|g| g.tag() == t),
             )?,
@@ -2738,8 +2738,11 @@ pub(crate) fn synthesisable(schema: &Schema, v7: bool, parent: &str, sub: Struct
     }
 }
 
-/// The types of `version` the spec names `names` stand for.
-pub(crate) fn type_ids(version: GedcomVersion, names: &[&str]) -> Vec<StructId> {
+/// The types of `version` the spec names `names` stand for that have the tag
+/// `tag`: the type a structure of that tag is read in. A row of the reader
+/// stands for several types, of several tags (the event row for `BIRT` and
+/// for `EVEN`), and only those with the parent's tag are the parent's.
+pub(crate) fn type_ids(version: GedcomVersion, names: &[&str], tag: &str) -> Vec<StructId> {
     let schema = version.rules().spec;
     names
         .iter()
@@ -2748,6 +2751,7 @@ pub(crate) fn type_ids(version: GedcomVersion, names: &[&str]) -> Vec<StructId> 
                 .filter_map(|id| StructId::try_from(id).ok())
                 .find(|&id| index::name_is(schema, usize::from(id), name))
         })
+        .filter(|&id| schema.tag(id) == tag)
         .collect()
 }
 
@@ -2755,13 +2759,16 @@ pub(crate) fn type_ids(version: GedcomVersion, names: &[&str]) -> Vec<StructId> 
 /// a structure of one of the types `sups` as an extension `_TAG`: when some
 /// type of `sups` has `tag` and lacks a required substructure nothing can
 /// stand for, or when no type of `sups` permits `tag` at all (a standard tag
-/// not permitted here, [`RepairKind::Misplaced`]). `has` tells which
-/// substructure tags the substructure holds. The header is completed by its
-/// own rules, never read back.
+/// not permitted here, [`RepairKind::Misplaced`]). The form of `tag` is the
+/// one its payload selects: `pointer`, whether the substructure's payload is
+/// a pointer (the pointer form of a tag has its own required parts). `has`
+/// tells which substructure tags the substructure holds. The header is
+/// completed by its own rules, never read back.
 pub(crate) fn repaired_as_extension(
     version: GedcomVersion,
     sups: &[StructId],
     tag: &str,
+    pointer: bool,
     has: impl Fn(&str) -> bool,
 ) -> bool {
     let rules: &VersionRules = version.rules();
@@ -2778,7 +2785,7 @@ pub(crate) fn repaired_as_extension(
     let v7 = version != GedcomVersion::V5_5_1;
     let mut permitted = false;
     for &sup in sups {
-        match pick(rules, sup, tag, false) {
+        match pick(rules, sup, tag, pointer) {
             Pick::Misplaced => {}
             Pick::Type(cty) => {
                 permitted = true;
@@ -2796,13 +2803,37 @@ pub(crate) fn repaired_as_extension(
     !sups.is_empty() && !permitted
 }
 
+/// The payload of an extension substructure, as [`read_back`] asks for it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ExtBody {
+    /// No payload.
+    None,
+    /// A pointer.
+    Pointer,
+    /// Text.
+    Text,
+}
+
+impl ExtBody {
+    /// The payload kind of `payload`.
+    pub(crate) fn of(payload: PayloadRef<'_>) -> Self {
+        match payload {
+            PayloadRef::None => Self::None,
+            PayloadRef::Pointer(_) => Self::Pointer,
+            PayloadRef::Text(_) => Self::Text,
+        }
+    }
+}
+
 /// The standard tag an extension substructure `ext` (`_TAG`) of a structure
 /// of one of the types `sups` stands for, when the reader reads it back as
 /// that substructure: the writer's repair made it of a standard `TAG` that
-/// has no payload and no extension substructure ([`repaired_as_extension`]).
-/// The caller checks the field that takes the tag. `payload`: whether the
-/// substructure has a payload; `nested`: whether it has an extension
-/// substructure; `has`: the tags of its standard substructures.
+/// has no extension substructure ([`repaired_as_extension`]) and whose
+/// payload is either none or a pointer, the kind the standard `TAG` takes
+/// ([`takes_pointer`]); a text payload is never read back. The caller
+/// checks the field that takes the tag. `body`: the payload of the
+/// substructure; `nested`: whether it has an extension substructure; `has`:
+/// the tags of its standard substructures.
 ///
 /// The reader ([`crate::model`]) and the conformance pass's order of
 /// substructures ask this one question, so that a repaired structure is
@@ -2811,16 +2842,44 @@ pub(crate) fn read_back(
     version: GedcomVersion,
     sups: &[StructId],
     ext: &str,
-    payload: bool,
+    body: ExtBody,
     nested: bool,
     has: impl Fn(&str) -> bool,
 ) -> Option<u16> {
-    if payload || nested {
+    if nested {
         return None;
     }
     let tag = ext.strip_prefix('_')?;
     let standard = crate::tree::standard_index(tag)?;
-    repaired_as_extension(version, sups, tag, has).then_some(standard)
+    match body {
+        ExtBody::None => {}
+        ExtBody::Pointer if takes_pointer(version, tag) => {}
+        ExtBody::Pointer | ExtBody::Text => return None,
+    }
+    let pointer = body == ExtBody::Pointer;
+    repaired_as_extension(version, sups, tag, pointer, has).then_some(standard)
+}
+
+/// Whether the standard substructure `tag` takes a pointer payload in
+/// `version`: among the structure types of the version with that tag, some
+/// has a pointer payload and none has a text payload. The answer is the
+/// tag's own, not a parent's: a misplaced tag has no type under the parent
+/// that could say. A tag with a pointer form and a text form (5.5.1 keeps
+/// some) takes no pointer read back.
+fn takes_pointer(version: GedcomVersion, tag: &str) -> bool {
+    let schema = version.rules().spec;
+    let mut pointer = false;
+    for id in (1..schema.structs.len()).filter_map(|id| StructId::try_from(id).ok()) {
+        if schema.tag(id) != tag {
+            continue;
+        }
+        match schema.kind(id).0 {
+            Kind::Pointer | Kind::NullablePointer => pointer = true,
+            Kind::None => {}
+            _ => return false,
+        }
+    }
+    pointer
 }
 
 /// The spelling of `value` in `set`: 5.5.1 matches without regard to case
