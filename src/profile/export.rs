@@ -1008,7 +1008,7 @@ impl Exporter {
     /// folded, the limits but the size).
     fn prepared(&self, data: &Dataset) -> (Dataset, ExportReport) {
         let (text, report) = self.folded(data, true);
-        (Dataset::parse(text), report)
+        (Dataset::parse_as_written(text), report)
     }
 
     /// Writes `data` for the importer to `writer`.

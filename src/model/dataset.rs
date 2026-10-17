@@ -570,6 +570,15 @@ impl Dataset {
         super::read::read_string(text.into())
     }
 
+    /// [`Dataset::parse`] of text the exporter itself wrote and conformed:
+    /// a structure the writer repaired (`_CROP` for `CROP`, `_INIL` for
+    /// `INIL`) is read as the extension it was written as, not as the
+    /// standard structure it stands for, so that the writer, given the
+    /// dataset, does not repair it a second time and report it again.
+    pub(crate) fn parse_as_written(text: impl Into<String>) -> Self {
+        super::read::read_as_written(text.into())
+    }
+
     /// Reads a dataset from bytes of any encoding (see
     /// [`crate::encoding::decode`]), leniently. Given a `Vec<u8>` of UTF-8,
     /// the dataset keeps that buffer as its text, without a copy.

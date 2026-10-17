@@ -154,11 +154,18 @@ fn version_of(declared: Option<&str>) -> (GedcomVersion, Escaping) {
 
 /// Reads a dataset from decoded text, keeping the text as its store.
 pub(crate) fn read_string(text: String) -> Dataset {
-    read_segmented(text, SEGMENT_LIMIT)
+    read_segmented(text, SEGMENT_LIMIT, false)
 }
 
-/// [`read_string`], lexing at most `limit` bytes at a time.
-pub(crate) fn read_segmented(text: String, limit: usize) -> Dataset {
+/// [`read_string`] of the exporter's own text, read as written
+/// ([`ReadCx::as_written`]).
+pub(crate) fn read_as_written(text: String) -> Dataset {
+    read_segmented(text, SEGMENT_LIMIT, true)
+}
+
+/// [`read_string`], lexing at most `limit` bytes at a time; `as_written`
+/// as [`read_as_written`].
+pub(crate) fn read_segmented(text: String, limit: usize, as_written: bool) -> Dataset {
     let declared = head_version(&text);
     let (version, escaping) = version_of(declared.as_deref());
     let mut data = Dataset::new(version);
@@ -177,6 +184,7 @@ pub(crate) fn read_segmented(text: String, limit: usize) -> Dataset {
         let parts = store.parts_mut();
         let input = parts.text;
         let mut cx = ReadCx::new(parts, tables, &mut scratch, version);
+        cx.as_written = as_written;
         let mut builder = Builder::new(escaping, 1).with_spans();
         for (start, end, first_line) in segment_bounds(input, limit) {
             let part = input.get(start..end).unwrap_or_default();
@@ -1565,7 +1573,7 @@ mod tests {
         let whole = Dataset::parse(text);
         // Segments of whole records (the largest is 75 bytes).
         for limit in [80, 120, 200] {
-            let parts = read_segmented(text.to_owned(), limit);
+            let parts = read_segmented(text.to_owned(), limit, false);
             assert_eq!(parts.to_structures(), whole.to_structures(), "{limit}");
         }
         assert_eq!(

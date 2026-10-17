@@ -366,6 +366,9 @@ pub(crate) struct ReadCx<'s> {
     escaping: Escaping,
     /// The version of the file.
     pub(crate) version: GedcomVersion,
+    /// Whether the text is read as written: a repaired structure stays the
+    /// extension the writer made of it ([`read_tag_of`]).
+    pub(crate) as_written: bool,
 }
 
 impl<'s> ReadCx<'s> {
@@ -385,6 +388,7 @@ impl<'s> ReadCx<'s> {
                 Escaping::V551
             },
             version,
+            as_written: false,
         }
     }
 
@@ -398,6 +402,7 @@ impl<'s> ReadCx<'s> {
             scratch: self.scratch,
             escaping: self.escaping,
             version: self.version,
+            as_written: self.as_written,
         }
     }
 
@@ -704,9 +709,9 @@ fn read_tag_of<'a>(
     child: NodeRef<'a>,
     lookup: &Lookup,
     spec: &[&str],
-    version: GedcomVersion,
+    cx: &ReadCx<'_>,
 ) -> NodeRef<'a> {
-    if (child.tag_id() as usize) < STANDARD_TAGS.len() || spec.is_empty() {
+    if cx.as_written || (child.tag_id() as usize) < STANDARD_TAGS.len() || spec.is_empty() {
         return child;
     }
     let Some(std) = child
@@ -722,6 +727,7 @@ fn read_tag_of<'a>(
     let nested = child
         .children()
         .any(|c| c.tag_id() as usize >= STANDARD_TAGS.len());
+    let version = cx.version;
     let types = crate::spec::conform::type_ids(version, spec);
     let read = crate::spec::conform::read_back(
         version,
@@ -784,7 +790,7 @@ pub(crate) fn read_row_into(
     if node.has_children() {
         cx.scratch.counts.resize(counts + fields.len(), 0);
         for child in node.children() {
-            let child = read_tag_of(child, lookup, spec, cx.version);
+            let child = read_tag_of(child, lookup, spec, cx);
             let field = usize::from(lookup.get(child.tag_id() as usize).copied().unwrap_or(0));
             if field > 0
                 && fields.get(field - 1).is_some_and(|f| f.many)
@@ -808,7 +814,7 @@ pub(crate) fn read_row_into(
     // The standard tags already sent aside, as a bit set.
     let mut sent = [0_u64; STANDARD_TAGS.len().div_ceil(64)];
     for child in node.children() {
-        let read = read_tag_of(child, lookup, spec, cx.version);
+        let read = read_tag_of(child, lookup, spec, cx);
         let tag = read.tag_id() as usize;
         let field = usize::from(lookup.get(tag).copied().unwrap_or(0));
         let (word, bit) = (tag / 64, 1_u64 << (tag % 64));

@@ -698,6 +698,32 @@ fn export_fixtures() {
     }
 }
 
+/// A repaired structure is reported once. The export conforms its records,
+/// then reads its own text back to write it, which must not repair the
+/// repaired structure a second time: a `CROP` of a link, written to 5.5.1 as
+/// `_CROP`, is one repair in the report and one `_CROP` in the output.
+#[test]
+fn a_repair_is_reported_once() {
+    let data = GedcomBuilder::new()
+        .build_from_str(
+            "0 HEAD\n1 GEDC\n2 VERS 7.0\n\
+             0 @I1@ INDI\n1 NAME Sample /Person/\n1 OBJE @M1@\n2 CROP\n3 TOP 1\n3 LEFT 2\n\
+             3 HEIGHT 3\n3 WIDTH 4\n\
+             0 @M1@ OBJE\n1 FILE photo.png\n2 FORM png\n0 TRLR\n",
+        )
+        .unwrap();
+    let exporter = Exporter::named("ancestris").unwrap();
+    let (out, report) = exporter.write_to_string(&data).unwrap();
+    assert_eq!(out.matches("\n2 _CROP\n").count(), 1, "{out}");
+    let crops: Vec<String> = report
+        .repairs
+        .iter()
+        .map(ToString::to_string)
+        .filter(|r| r.contains("OBJE.CROP"))
+        .collect();
+    assert_eq!(crops.len(), 1, "{:?}", report.repairs);
+}
+
 #[test]
 fn geneanet_export_folds_what_ged2gwb_needs() {
     let data = Dataset::parse(
