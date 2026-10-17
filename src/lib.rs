@@ -80,22 +80,35 @@ pub use indexed::IndexedDataset;
 pub use model::Dataset;
 pub use stream::{GedcomStreamParser, StreamedRecord, Visitor};
 pub use version::{GedcomVersion, VersionRules};
-/// The examples of the README, compiled and run as documentation tests.
+/// The Rust examples of the documentation in `docs/`, compiled and run as
+/// documentation tests (some need the `serde` and `gedzip` features).
 #[cfg(all(doctest, feature = "serde", feature = "gedzip"))]
-#[doc = include_str!("../README.md")]
-pub struct ReadmeExamples;
-
-/// The examples of the migration guide from ged_io 0.17, compiled and run
-/// as documentation tests.
-#[cfg(doctest)]
-#[doc = include_str!("../MIGRATION.md")]
-pub struct MigrationExamples;
-
-/// The examples of the guide to GEDCOM 5.5.1 and 7.0, compiled and run as
-/// documentation tests.
-#[cfg(doctest)]
-#[doc = include_str!("../docs/gedcom-7.md")]
-pub struct GedcomSevenExamples;
+mod docs {
+    #[doc = include_str!("../docs/quickstart.md")]
+    pub struct Quickstart;
+    #[doc = include_str!("../docs/reading.md")]
+    pub struct Reading;
+    #[doc = include_str!("../docs/dataset.md")]
+    pub struct Dataset;
+    #[doc = include_str!("../docs/editing.md")]
+    pub struct Editing;
+    #[doc = include_str!("../docs/writing.md")]
+    pub struct Writing;
+    #[doc = include_str!("../docs/conversion.md")]
+    pub struct Conversion;
+    #[doc = include_str!("../docs/streaming.md")]
+    pub struct Streaming;
+    #[doc = include_str!("../docs/gedzip.md")]
+    pub struct Gedzip;
+    #[doc = include_str!("../docs/validation.md")]
+    pub struct Validation;
+    #[doc = include_str!("../docs/values.md")]
+    pub struct Values;
+    #[doc = include_str!("../docs/profiles.md")]
+    pub struct Profiles;
+    #[doc = include_str!("../docs/gedcom-7.md")]
+    pub struct GedcomSeven;
+}
 
 pub use writer::{
     Bom, Credentials, GedcomStreamWriter, GedcomWriter, LineEnding, OutputEncoding, Repair,

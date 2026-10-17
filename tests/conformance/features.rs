@@ -1,4 +1,4 @@
-//! The features the README announces, exercised on the suite's fixtures
+//! The features the documentation describes, exercised on the suite's fixtures
 //! (`feature/…`): dual 5.5.1/7.0 support, reading and writing, the streaming
 //! parser, indexed lookups, GEDZIP, the listed encodings, JSON export and
 //! performance (opt-in). Leniency ("Compatible") is the subject of every L
@@ -179,7 +179,7 @@ fn gedzip_feature(id: &str, model: &adapter::Model, failures: &mut Vec<Failure>,
 #[cfg(not(feature = "gedzip"))]
 fn gedzip_feature(_: &str, _: &adapter::Model, _: &mut Vec<Failure>, _: &mut usize) {}
 
-/// Every encoding the README lists has cases in the `encoding` family.
+/// Every encoding the documentation lists has cases in the `encoding` family.
 #[test]
 fn readme_encodings_are_covered() {
     let ids: Vec<String> = crate::encodings::encoding_cases()
@@ -195,7 +195,7 @@ fn readme_encodings_are_covered() {
     ] {
         assert!(
             ids.iter().any(|i| i.starts_with(prefix)),
-            "README encoding {enc} has no case"
+            "documented encoding {enc} has no case"
         );
     }
 }
@@ -229,7 +229,7 @@ pub fn synthetic(people: usize, v7: bool) -> String {
     s + "0 TRLR\n"
 }
 
-/// Opt-in performance smoke test (README "Fast"): a 5 MB fictitious file is
+/// Opt-in performance smoke test (the documentation's performance figures): a 5 MB fictitious file is
 /// parsed, written and streamed within generous bounds. Run it in release:
 /// `cargo test --release --all-features --test conformance -- --ignored performance`.
 #[test]
@@ -260,7 +260,7 @@ fn performance_smoke() {
     }
 }
 
-/// Reference validation (README "Ensure data integrity") accepts `@VOID@`
+/// Reference validation (the documentation's integrity checks) accepts `@VOID@`
 /// and reports a dangling pointer.
 #[test]
 fn reference_validation() {

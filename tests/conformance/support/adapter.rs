@@ -61,7 +61,7 @@ pub fn read(bytes: &[u8]) -> Result<Model, String> {
 }
 
 /// Reads bytes and reports dangling pointers as an error (the reference
-/// check the README documents for application backends).
+/// check the documentation describes for application backends).
 pub fn read_checking_references(bytes: &[u8]) -> Result<Model, String> {
     guard(|| {
         let data = lenient()

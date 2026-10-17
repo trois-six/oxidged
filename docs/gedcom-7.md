@@ -1,6 +1,18 @@
-# GEDCOM 5.5.1 and GEDCOM 7.0
+---
+type: "Reference"
+title: "GEDCOM 5.5.1 and 7.0"
+description: "The differences between GEDCOM 5.5.1 and 7.0, and how oxidged reads, checks and writes each version."
+tags: [oxidged, gedcom-7, versions]
+generated: { by: human:maintainer, at: 2026-10-17T11:42:19Z }
+---
 
-This guide explains the key differences between GEDCOM 5.5.1 and GEDCOM 7.0, and how oxidged reads and writes each. (To move code from the `ged_io` crate to oxidged, see [MIGRATION.md](../MIGRATION.md).)
+# GEDCOM 5.5.1 and 7.0
+
+> Part of the [oxidged documentation](index.md).
+> See also: [Conversion](conversion.md) · [GEDCOM Specifications](specifications.md)
+
+The key differences between GEDCOM 5.5.1 and GEDCOM 7.0, and how oxidged
+reads and writes each.
 
 ## Key Differences
 
@@ -317,8 +329,5 @@ assert!(!out.contains("CONC"));
 
 - [GEDCOM 7.0 Specification](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html)
 - [GEDCOM 5.5.1 Specification](https://gedcom.io/specifications/ged551.pdf)
-- [oxidged Documentation](https://docs.rs/oxidged)
-
----
-
-*This guide is part of the oxidged documentation.*
+- [GEDCOM Specifications](specifications.md): the copies bundled with oxidged
+- [API documentation](https://docs.rs/oxidged)

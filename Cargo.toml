@@ -17,7 +17,7 @@ homepage = "https://github.com/trois-six/oxidged"
 documentation = "https://docs.rs/oxidged"
 edition = "2024"
 rust-version = "1.88"
-include = ["Cargo.toml", "src/**/*.rs", "license.md", "NOTICE", "/README.md", "/MIGRATION.md", "/CHANGELOG.md", "/docs/gedcom-7.md"]
+include = ["Cargo.toml", "src/**/*.rs", "license.md", "NOTICE", "/README.md", "/docs/*.md"]
 
 [features]
 default = []

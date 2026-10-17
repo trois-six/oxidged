@@ -33,7 +33,9 @@ oxidged --profile geneanet family.ged > for-geneanet.ged
 oxidged --list-profiles
 ```
 
-`oxidged --help` lists every option. Exit codes: 0 success, 1 I/O error,
+`oxidged --help` lists every option; the
+[command-line documentation](https://github.com/trois-six/oxidged/blob/main/docs/cli.md)
+describes each. Exit codes: 0 success, 1 I/O error,
 2 validation errors in strict mode, 3 usage error.
 
 Licensed under the [MIT License](license.md).
