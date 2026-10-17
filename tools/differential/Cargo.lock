@@ -10,7 +10,7 @@ checksum = "e4c52d91a78332ce0dfb60e2f53227ecdb58f99afe624c8e69506dc225a39caf"
 
 [[package]]
 name = "oxidged"
-version = "0.3.0"
+version = "0.3.1"
 
 [[package]]
 name = "oxidged-differential"

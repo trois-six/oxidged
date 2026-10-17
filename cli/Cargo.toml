@@ -1,6 +1,6 @@
 [package]
 name = "oxidged-cli"
-version = "0.3.0"
+version = "0.3.1"
 authors = [
     "Robert Pirtle <astropirtle@gmail.com>",
     "Jacob Benison <ge3224@gmail.com>",
@@ -26,7 +26,7 @@ path = "src/main.rs"
 clap = { version = "4.6", features = ["derive", "wrap_help"] }
 clap_complete = "4.6"
 clap_mangen = "0.3"
-oxidged = { path = "..", version = "0.3.0", features = ["serde", "gedzip", "calendar"] }
+oxidged = { path = "..", version = "0.3.1", features = ["serde", "gedzip", "calendar"] }
 serde_json = "1.0"
 
 [dev-dependencies]
