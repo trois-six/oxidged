@@ -82,7 +82,13 @@ fn date_to_version(
     }
     if phrase.is_none() {
         let text = value.to_str(cx.store);
-        if valid(kind, &text) && time.is_none_or(|t| valid(Kind::Time, &t.to_str(cx.store))) {
+        // The 5.5.1 grammar takes any character in a date phrase
+        // (`INT 1900 (…)`, `(…)`), a banned one included, which the
+        // conformance check repairs: such a date is left to it.
+        if valid(kind, &text)
+            && !crate::spec::payload::has_banned(&text, cx.version.rules())
+            && time.is_none_or(|t| valid(Kind::Time, &t.to_str(cx.store)))
+        {
             debug_assert!(
                 convert(value, time, None, cx).is_none(),
                 "{value:?} {time:?}"

@@ -802,6 +802,35 @@ fn values_are_converted_as_written() {
     }
 }
 
+/// A 5.5.1 date phrase may hold any character in the date grammar, but not
+/// in the file: a banned one (`\u{90}`, a C1 control) is left out of a
+/// date the grammar reads as it is, as of any text (fuzz `profiles`).
+#[test]
+fn a_date_phrase_loses_its_banned_characters() {
+    let input = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 DEAT\n2 DATE INT 1930 (about \u{90}the war)\n0 TRLR\n";
+    for version in VERSIONS {
+        let (out, report) = GedcomWriter::new()
+            .gedcom_version(version)
+            .write_to_string_with_report(&read(input))
+            .unwrap();
+        assert!(!out.contains('\u{90}'), "{version}: {out}");
+        // 7.x converts the date (its phrase a `PHRASE`), the character
+        // left out as it is converted.
+        if version == GedcomVersion::V5_5_1 {
+            assert!(
+                report
+                    .repairs
+                    .iter()
+                    .any(|r| r.detail.contains("banned character")),
+                "{:?}",
+                report.repairs
+            );
+        }
+        assert!(oxidged::spec::validate_text(&out).is_empty(), "{out}");
+        assert_eq!(write(&read(&out), version), out, "{version}");
+    }
+}
+
 /// A new identifier is never one a pointer holds, whether a record's
 /// invalid one is renamed (`@U1` written `@U1@`), a record without one is
 /// numbered (`@I1@`) or a conversion takes a record out of another
