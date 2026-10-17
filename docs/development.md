@@ -3,7 +3,7 @@ type: "Development Guide"
 title: "Development"
 description: "Building and checking oxidged: the workspace, the test suites, the conformance corpora, fuzzing, the tools and the CI workflows."
 tags: [oxidged, development, testing, fuzzing, ci]
-generated: { by: human:maintainer, at: 2026-10-17T11:42:19Z }
+generated: { by: human:maintainer, at: 2026-10-17T14:17:34Z }
 ---
 
 # Development
@@ -29,14 +29,17 @@ The workspace is in Rust edition 2024; the minimum supported Rust version is
 ```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo clippy --workspace --all-targets --no-default-features -- -D warnings
+cargo clippy -p oxidged --all-targets --no-default-features -- -D warnings
 cargo test --workspace --all-features
-cargo test --workspace --no-default-features
+cargo test -p oxidged --no-default-features
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --all-features
 cargo +1.88 test --workspace --all-features
 ```
 
-`cargo fmt --check` also runs in `fuzz/`, `tools/perf` and
+The command-line tool enables the library's `serde`, `gedzip` and `calendar`
+features, which cargo unifies across the workspace: the library without
+features is checked on its own (`-p oxidged`). `cargo fmt --check` also runs
+in `fuzz/`, `tools/perf` and
 `tools/differential` (`--manifest-path`), and the CI tests each feature on its
 own with `cargo hack --workspace --each-feature`.
 

@@ -62,7 +62,8 @@ oxidged` when a Rust example changes), a YAML parse of an edited workflow.
 
 Before committing code: `cargo fmt --all --check` (and in `fuzz/` and each
 tool), `cargo clippy --workspace --all-targets -- -D warnings` with all
-features, none and each feature alone, `cargo test --workspace` with all
-features and with none, `RUSTDOCFLAGS="-D warnings" cargo doc --workspace
+features, and on the library (`-p oxidged`, which the CLI's features would
+otherwise unify) with none and each feature alone, `cargo test --workspace
+--all-features` and `cargo test -p oxidged --no-default-features`, `RUSTDOCFLAGS="-D warnings" cargo doc --workspace
 --no-deps --all-features`, and the MSRV (`cargo +1.88 test --workspace
 --all-features`).
