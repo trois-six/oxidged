@@ -196,14 +196,17 @@ impl<R: Read + Seek> GedzipReader<R> {
     pub fn new(reader: R) -> Result<Self, GedzipError> {
         let archive = ZipArchive::new(reader)?;
 
+        // The names of the entries: UTF-8, else CP437 (ZIP's legacy
+        // encoding of names).
+        let file_names = archive
+            .file_names()
+            .map(|name| name.map(String::from))
+            .collect::<Result<Vec<_>, _>>()?;
+
         // Verify gedcom.ged exists
-        let has_gedcom = archive.file_names().any(|name| name == GEDCOM_FILENAME);
-        if !has_gedcom {
+        if !file_names.iter().any(|name| name == GEDCOM_FILENAME) {
             return Err(GedzipError::MissingGedcom);
         }
-
-        // Collect file names
-        let file_names: Vec<String> = archive.file_names().map(String::from).collect();
 
         Ok(Self {
             archive,
