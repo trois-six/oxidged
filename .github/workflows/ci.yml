@@ -1,13 +1,29 @@
 # .github/workflows/ci.yml
 name: CI/CD Pipeline
 
+# A change limited to the documentation runs nothing: its checks are local
+# (AGENTS.md). Path filters do not apply to tags, so a release always runs.
 on:
   push:
     branches: [ main ]
     tags:
       - 'v*'
+    paths-ignore:
+      - 'docs/**'
+      - '**/README.md'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'NOTICE'
+      - 'license.md'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/README.md'
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'NOTICE'
+      - 'license.md'
 
 env:
   CARGO_TERM_COLOR: always

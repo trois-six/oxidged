@@ -3,7 +3,7 @@ type: "Development Guide"
 title: "Development"
 description: "Building and checking oxidged: the workspace, the test suites, the conformance corpora, fuzzing, the tools and the CI workflows."
 tags: [oxidged, development, testing, fuzzing, ci]
-generated: { by: human:maintainer, at: 2026-10-17T14:17:34Z }
+generated: { by: human:maintainer, at: 2026-10-17T15:12:06Z }
 ---
 
 # Development
@@ -102,6 +102,6 @@ Every name, place and value in the tests is fictitious.
 
 | Workflow | Jobs |
 |---|---|
-| `ci.yml` (pushes to `main`, tags, pull requests) | Formatting, clippy, tests and documentation on stable, beta and nightly; the MSRV; each feature alone; Linux, Windows and macOS; peak memory and throughput (`tools/perf check`); `cargo audit` of the lockfile; on a `v*` tag, the release |
+| `ci.yml` (pushes to `main` and pull requests that change more than the documentation, tags) | Formatting, clippy, tests and documentation on stable, beta and nightly; the MSRV; each feature alone; Linux, Windows and macOS; peak memory and throughput (`tools/perf check`); `cargo audit` of the lockfile; on a `v*` tag, the release |
 | `nightly.yml` (daily) | Five minutes of fuzzing per target, the crashing inputs kept as artifacts; the opt-in corpora, the corpus-wide validation and repair, and the performance smoke test in a release build |
 | `release.yml` | The GitHub release and the `oxidged` binaries for Linux, Windows and macOS (x86_64 and ARM64) |
