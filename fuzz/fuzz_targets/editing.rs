@@ -7,6 +7,9 @@
 //! identifier set through a lent record); and the dataset is then written
 //! conformant in every version (but for what the conformance repair
 //! documents it leaves: `common/left.rs`), and stable through a read back.
+//! Among the edits, a subset of a branch (an individual's ancestors or
+//! descendants) replaces the dataset: it keeps only those individuals and
+//! adds no dangling pointer.
 #![no_main]
 
 use std::collections::BTreeMap;
@@ -134,7 +137,7 @@ const LINKS: [Link; 15] = [
 
 /// One edit; whether it may leave pointers dangling.
 fn edit(data: &mut Dataset, ops: &mut Ops<'_>, fresh: &mut usize) -> bool {
-    match ops.below(12) {
+    match ops.below(13) {
         0 => {
             let mut indi = Individual::default();
             if let Some(f) = xref_of::<Family>(data, ops) {
@@ -295,6 +298,37 @@ fn edit(data: &mut Dataset, ops: &mut Ops<'_>, fresh: &mut usize) -> bool {
             }
             data.push(Record::Individual(Box::new(indi)));
             true
+        }
+        11 => {
+            // A branch: the relatives of an individual, some generations
+            // up or down, with it.
+            let Some(start) = xref_of::<Individual>(data, ops) else {
+                return false;
+            };
+            let depth = match ops.below(4) {
+                0 => None,
+                d => u32::try_from(d).ok(),
+            };
+            let mut chosen: Vec<_> = if ops.below(2) == 0 {
+                data.ancestors(start, depth)
+            } else {
+                data.descendants(start, depth)
+            }
+            .iter()
+            .filter_map(|r| r.individual.xref())
+            .collect();
+            chosen.push(start);
+            let subset = data.subset(chosen.iter().copied());
+            // Only chosen individuals are kept, and the dataset is unchanged.
+            let names = |d: &Dataset, id: XrefId| d.store().xref(id).to_string();
+            let chosen: std::collections::BTreeSet<_> =
+                chosen.iter().map(|&id| names(data, id)).collect();
+            for i in subset.individuals() {
+                let id = i.xref().expect("a kept individual has an identifier");
+                assert!(chosen.contains(&names(&subset, id)));
+            }
+            *data = subset;
+            false
         }
         _ => {
             let submitter = xref_of::<oxidged::model::Submitter>(data, ops);

@@ -32,7 +32,7 @@ version does not permit and reporting each repair. A command-line tool,
 - **Validation**: every deviation of a file from its specification, with its
   line; an opt-in strict mode; a repair that makes any tree conformant.
 - **Editing**: add, remove, rename and link records with their references
-  kept whole.
+  kept whole; ancestors, descendants and subsets of a tree.
 - **Streaming**: read and write one record at a time, in bounded memory.
 - **Encodings**: UTF-8, UTF-16, ANSEL, ASCII and eight single-byte code pages;
   decoding never fails.

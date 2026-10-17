@@ -185,6 +185,7 @@ mod enums;
 mod event;
 mod header;
 mod identifier;
+pub(crate) mod kinship;
 mod lds;
 mod ledger_impl;
 mod link;
@@ -230,6 +231,7 @@ pub use header::{
     HeaderText, Schema,
 };
 pub use identifier::{Exid, Refn};
+pub use kinship::Relative;
 pub use lds::{Ordinance, OrdinanceKind};
 pub use link::{
     Association, ChildLink, ChildLinkDetail, IndividualRef, IndividualRefDetail, SpouseLink,

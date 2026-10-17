@@ -26,16 +26,63 @@ use std::ops::{Deref, DerefMut};
 
 use crate::model::{Dataset, Family, View, XrefId, XrefKey};
 
+/// How an individual belongs to a family.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Role {
+    /// A partner (`HUSB` or `WIFE`).
+    Partner,
+    /// A child (`CHIL`).
+    Child,
+}
+
 /// Lists of positions per item, in one buffer: the families of each
 /// individual.
 #[derive(Clone, Debug, Default)]
-struct Links {
+pub(crate) struct Links {
     /// For item `i`, its positions are `items[starts[i]..starts[i + 1]]`.
     starts: Vec<u32>,
     items: Vec<u32>,
 }
 
 impl Links {
+    /// The families each identifier is a partner or a child in (by
+    /// [`XrefId`]), whether or not a record has it, as the dataset's own
+    /// navigation finds them: one walk of the families.
+    pub(crate) fn of(data: &Dataset, role: Role) -> Self {
+        let mut pairs = Vec::new();
+        let index = |id: XrefId| u32::try_from(id.index()).ok();
+        for (at, family) in data.families().into_iter().enumerate() {
+            let Ok(at) = u32::try_from(at) else { break };
+            match role {
+                Role::Partner => {
+                    for partner in [family.husband_id(), family.wife_id()]
+                        .into_iter()
+                        .flatten()
+                    {
+                        if let Some(i) = index(partner) {
+                            pairs.push((i, at));
+                        }
+                    }
+                }
+                Role::Child => {
+                    for child in family
+                        .children()
+                        .into_iter()
+                        .filter_map(View::<crate::model::IndividualRef>::individual)
+                    {
+                        if let Some(i) = index(child) {
+                            pairs.push((i, at));
+                        }
+                    }
+                }
+            }
+        }
+        // One list entry per family, even when an individual is both
+        // partners of it.
+        pairs.dedup();
+        Self::build(data.store().xref_count(), &pairs)
+    }
+
     /// Builds the lists from `(item, position)` pairs over `count` items.
     fn build(count: usize, pairs: &[(u32, u32)]) -> Self {
         let mut starts = vec![0_u32; count + 1];
@@ -60,7 +107,8 @@ impl Links {
         Self { starts, items }
     }
 
-    fn of(&self, item: usize) -> &[u32] {
+    /// The positions of `item`.
+    pub(crate) fn get(&self, item: usize) -> &[u32] {
         let start = self.starts.get(item).copied().unwrap_or(0) as usize;
         let end = self.starts.get(item + 1).copied().unwrap_or(0) as usize;
         self.items.get(start..end).unwrap_or_default()
@@ -96,38 +144,16 @@ impl IndexedDataset {
     }
 
     fn reindex(&mut self) {
-        let data = &self.data;
-        // The families each identifier is a partner and a child in, whether
-        // or not a record has it (as the dataset's own navigation finds them).
-        let mut spouses = Vec::new();
-        let mut children = Vec::new();
-        let index = |id: XrefId| u32::try_from(id.index()).ok();
-        for (at, family) in data.families().into_iter().enumerate() {
-            let Ok(at) = u32::try_from(at) else { break };
-            for partner in [family.husband_id(), family.wife_id()]
-                .into_iter()
-                .flatten()
-            {
-                if let Some(i) = index(partner) {
-                    spouses.push((i, at));
-                }
-            }
-            for child in family
-                .children()
-                .into_iter()
-                .filter_map(View::<crate::model::IndividualRef>::individual)
-            {
-                if let Some(i) = index(child) {
-                    children.push((i, at));
-                }
-            }
+        self.as_spouse = Links::of(&self.data, Role::Partner);
+        self.as_child = Links::of(&self.data, Role::Child);
+    }
+
+    /// The index of the families each identifier has `role` in.
+    pub(crate) fn links(&self, role: Role) -> &Links {
+        match role {
+            Role::Partner => &self.as_spouse,
+            Role::Child => &self.as_child,
         }
-        // One list entry per family, even when an individual is both
-        // partners of it.
-        spouses.dedup();
-        let count = data.store().xref_count();
-        self.as_spouse = Links::build(count, &spouses);
-        self.as_child = Links::build(count, &children);
     }
 
     /// The dataset.
@@ -155,7 +181,7 @@ impl IndexedDataset {
     ) -> impl Iterator<Item = View<'s, Family>> {
         let positions = individual
             .id_in(self.data.store())
-            .map_or(&[][..], |id| links.of(id.index()));
+            .map_or(&[][..], |id| links.get(id.index()));
         let families = self.data.families();
         positions
             .iter()

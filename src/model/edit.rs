@@ -1262,8 +1262,7 @@ impl Dataset {
 
     /// The tables built anew from the records, in one pass over their
     /// identifiers: handles made before are no longer valid. For datasets
-    /// made whole (read, deserialized).
-    #[cfg(feature = "serde")]
+    /// made whole (read, deserialized, filtered).
     pub(crate) fn reindex(&mut self) {
         self.index = Index::default();
         for kind in KINDS {
@@ -1984,6 +1983,249 @@ impl Dataset {
         n
     }
 
+    /// Removes every structure whose own pointer `gone` marks (by id
+    /// index), with its substructures, from the header and every record:
+    /// [`Dataset::detach`] of many identifiers in one walk. The number
+    /// removed.
+    fn detach_where(&mut self, gone: &[bool]) -> usize {
+        let cut_id = |p: XrefId| gone.get(p.index()).copied().unwrap_or(false);
+        if !gone.contains(&true) {
+            return 0;
+        }
+        let mut n = 0;
+        if let Some(h) = self.header.as_deref_mut() {
+            let mut removed = Vec::new();
+            let mut keep = |p: XrefId| !cut_id(p);
+            let mut out = |p: XrefId| removed.push(p);
+            let mut cut = Cut::new(&mut keep, &mut out);
+            h.retain(&mut cut);
+            n += cut.count;
+            self.index.count(-1, self.store.xref_count(), |c| {
+                removed.into_iter().for_each(c);
+            });
+        }
+        for kind in KINDS {
+            for pos in 0..self.len_of(kind) {
+                let Some(r) = self.record_at(kind, pos) else {
+                    continue;
+                };
+                let mut has = false;
+                r.each_pointer(&mut |p| has |= cut_id(p));
+                if !has {
+                    continue;
+                }
+                self.edit_record(kind, pos, &mut |mut h| {
+                    let mut keep = |p: XrefId| !cut_id(p);
+                    let mut out = |_: XrefId| {};
+                    let mut cut = Cut::new(&mut keep, &mut out);
+                    h.retain(&mut cut);
+                    h.cut_own(&mut cut);
+                    n += cut.count;
+                    true
+                });
+            }
+        }
+        n
+    }
+
+    /// A copy of the dataset with the records `keep` accepts (by kind and
+    /// position), in order, and the header: pointers are left as they are.
+    fn filtered(&self, keep: &dyn Fn(RecordKind, usize) -> bool) -> Dataset {
+        let mut out = Dataset::new(self.version);
+        out.header.clone_from(&self.header);
+        out.store = self.store.clone();
+        out.declared_version.clone_from(&self.declared_version);
+        out.producer.clone_from(&self.producer);
+        out.read_source.clone_from(&self.read_source);
+        {
+            let mut cx = CopyCx {
+                from: &self.tables,
+                to: &mut out.tables,
+                moved: Moved::Same,
+            };
+            for kind in KINDS {
+                with_kind!(kind, |R| copy_kept::<R>(&mut cx, &|pos| keep(kind, pos)));
+            }
+        }
+        out.tables.shrink();
+        out.reindex();
+        out
+    }
+
+    /// The dataset restricted to some individuals and what they need: a
+    /// new dataset, this one unchanged. Its records, in this dataset's
+    /// order, are
+    ///
+    /// - the individuals with these identifiers (identifiers of no
+    ///   individual are ignored);
+    /// - the families one of whose partners is kept, or two or more of
+    ///   whose children are;
+    /// - every other record the header, these individuals and families
+    ///   point to, directly or through the records kept so (sources and
+    ///   their repositories, shared notes, multimedia objects, submitters,
+    ///   submissions, extension records), and the untyped records without
+    ///   an identifier, which nothing can point to.
+    ///
+    /// Every structure that points to a record left out (a family's `CHIL`
+    /// or `HUSB`, an individual's `FAMC`, `FAMS`, `ALIA` or `ASSO`, an
+    /// extension structure) is removed with its substructures, as
+    /// [`Removal::Detach`] removes them, so that the subset has no pointer
+    /// to a record this dataset has and it has not; pointers that point to
+    /// no record in this dataset are left as they are. The header is kept,
+    /// and the dataset's version, declaration and producer. Linear in the
+    /// size of the dataset.
+    ///
+    /// With [`Dataset::ancestors`] and [`Dataset::descendants`], it
+    /// extracts a branch:
+    ///
+    /// ```rust
+    /// use oxidged::model::Dataset;
+    ///
+    /// let data = Dataset::parse(
+    ///     "0 HEAD\n1 GEDC\n2 VERS 7.0\n\
+    ///      0 @I1@ INDI\n1 SOUR @S1@\n0 @I2@ INDI\n0 @I3@ INDI\n\
+    ///      0 @F1@ FAM\n1 HUSB @I2@\n1 CHIL @I1@\n1 CHIL @I3@\n\
+    ///      0 @S1@ SOUR\n0 @S2@ SOUR\n0 TRLR\n",
+    /// );
+    /// let ann = data.find_individual("@I1@").unwrap();
+    /// let branch = data.subset(
+    ///     data.ancestors("@I1@", None)
+    ///         .iter()
+    ///         .map(|r| r.individual.xref())
+    ///         .chain([ann.xref()]),
+    /// );
+    /// let out = oxidged::GedcomWriter::new().write_to_string(&branch).unwrap();
+    /// assert!(out.contains("0 @F1@ FAM\n1 HUSB @I2@\n1 CHIL @I1@\n0 @S1@ SOUR\n"));
+    /// assert!(!out.contains("@I3@") && !out.contains("@S2@"));
+    /// assert!(branch.dangling_references().is_empty());
+    /// ```
+    #[must_use]
+    pub fn subset<I>(&self, individuals: I) -> Dataset
+    where
+        I: IntoIterator,
+        I::Item: XrefKey,
+    {
+        let count = self.store.xref_count();
+        let mut chosen = vec![false; count];
+        for x in individuals {
+            if let Some(slot) = x
+                .id_in(&self.store)
+                .and_then(|id| chosen.get_mut(id.index()))
+            {
+                *slot = true;
+            }
+        }
+        let is_chosen = |id: Option<XrefId>| {
+            id.and_then(|id| chosen.get(id.index()).copied())
+                .unwrap_or(false)
+        };
+        // The individuals kept, by identifier.
+        let mut kept = vec![false; count];
+        for i in self.individuals() {
+            if is_chosen(i.xref())
+                && let Some(slot) = i.xref().and_then(|id| kept.get_mut(id.index()))
+            {
+                *slot = true;
+            }
+        }
+        let is_kept = |id: Option<XrefId>| {
+            id.and_then(|id| kept.get(id.index()).copied())
+                .unwrap_or(false)
+        };
+        let families: Vec<bool> = self
+            .families()
+            .into_iter()
+            .map(|f| {
+                is_kept(f.husband_id())
+                    || is_kept(f.wife_id())
+                    || f.children()
+                        .into_iter()
+                        .filter(|c| is_kept(c.individual()))
+                        .nth(1)
+                        .is_some()
+            })
+            .collect();
+        let mut out = self.filtered(&|kind, pos| match kind {
+            RecordKind::Individual => is_kept(self.xref_of_record(kind, pos)),
+            RecordKind::Family => families.get(pos).copied().unwrap_or(false),
+            _ => true,
+        });
+        // The pointers to the individuals and families left out.
+        let defined = |data: &Dataset, i: usize| data.index.defs.get(i).is_some_and(|&d| d != 0);
+        let gone: Vec<bool> = (0..count)
+            .map(|i| defined(self, i) && !defined(&out, i))
+            .collect();
+        out.detach_where(&gone);
+        // The other records the header and the individuals and families
+        // point to, at any depth.
+        let reached = out.reached();
+        out.filtered(&|kind, pos| match kind {
+            RecordKind::Individual | RecordKind::Family => true,
+            _ => out
+                .xref_of_record(kind, pos)
+                .is_none_or(|id| reached.get(id.index()).copied().unwrap_or(false)),
+        })
+    }
+
+    /// By id index, whether the header, an individual, a family, an
+    /// untyped record without identifier or a record they reach points to
+    /// it.
+    fn reached(&self) -> Vec<bool> {
+        let count = self.store.xref_count();
+        // The records of the other kinds that have each identifier.
+        let mut pairs = Vec::new();
+        for kind in KINDS {
+            if matches!(kind, RecordKind::Individual | RecordKind::Family) {
+                continue;
+            }
+            for pos in 0..self.len_of(kind) {
+                if let Some(id) = self.xref_of_record(kind, pos) {
+                    pairs.push((id.index(), kind, pos));
+                }
+            }
+        }
+        pairs.sort_unstable_by_key(|p| p.0);
+        let mut reached = vec![false; count];
+        let mut todo = Vec::new();
+        let reach = |p: XrefId, reached: &mut Vec<bool>, todo: &mut Vec<usize>| {
+            if let Some(r) = reached.get_mut(p.index())
+                && !*r
+            {
+                *r = true;
+                todo.push(p.index());
+            }
+        };
+        if let Some(h) = self.header.as_deref() {
+            Pointers::each(h, &mut |p| reach(p, &mut reached, &mut todo));
+        }
+        for kind in KINDS {
+            let root = matches!(kind, RecordKind::Individual | RecordKind::Family);
+            for pos in 0..self.len_of(kind) {
+                if !root && (kind != RecordKind::Other || self.xref_of_record(kind, pos).is_some())
+                {
+                    continue;
+                }
+                if let Some(r) = self.record_at(kind, pos) {
+                    r.each_pointer(&mut |p| reach(p, &mut reached, &mut todo));
+                }
+            }
+        }
+        while let Some(i) = todo.pop() {
+            let from = pairs.partition_point(|p| p.0 < i);
+            for &(_, kind, pos) in pairs
+                .get(from..)
+                .unwrap_or_default()
+                .iter()
+                .take_while(|p| p.0 == i)
+            {
+                if let Some(r) = self.record_at(kind, pos) {
+                    r.each_pointer(&mut |p| reach(p, &mut reached, &mut todo));
+                }
+            }
+        }
+        reached
+    }
+
     // ---- Links ------------------------------------------------------------
 
     /// Adds a pointer of kind `link` from `holder` to the record with
@@ -2226,6 +2468,23 @@ fn copy_records<R: RecordRows>(cx: &mut CopyCx<'_>) {
         };
         let at = u32::try_from(pos).unwrap_or(u32::MAX);
         let copied = R::copy_elem(&row, at, cx, at);
+        R::records_mut(cx.to).rows.push(copied);
+    }
+}
+
+/// Copies the records of `R` that `keep` accepts (by position) after
+/// those of `cx.to`.
+fn copy_kept<R: RecordRows>(cx: &mut CopyCx<'_>, keep: &dyn Fn(usize) -> bool) {
+    let len = R::records(cx.from).len();
+    for pos in 0..len {
+        if !keep(pos) {
+            continue;
+        }
+        let Some(&row) = R::records(cx.from).rows.get(pos) else {
+            continue;
+        };
+        let at = u32::try_from(R::records(cx.to).len()).unwrap_or(u32::MAX);
+        let copied = R::copy_elem(&row, u32::try_from(pos).unwrap_or(u32::MAX), cx, at);
         R::records_mut(cx.to).rows.push(copied);
     }
 }

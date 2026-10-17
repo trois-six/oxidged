@@ -10,7 +10,7 @@ okf_version: "0.2"
 # Library
 
 * [Reading](reading.md) - How oxidged reads any GEDCOM input without failing or losing data: decoding, line rules, typing, the builder's inputs and options, strict mode and the read report.
-* [The Dataset](dataset.md) - The typed model of every GEDCOM structure: how a dataset stores records, the views its accessors give, lookups and navigation, indexed lookups and JSON.
+* [The Dataset](dataset.md) - The typed model of every GEDCOM structure: how a dataset stores records, the views its accessors give, lookups and navigation, ancestors and descendants, subsets, indexed lookups and JSON.
 * [Editing](editing.md) - Adding, removing, renaming and linking records with their references kept whole: handles, pointer counts and checked edits.
 * [Writing](writing.md) - How oxidged writes strictly conformant GEDCOM 5.5.1, 7.0 or 7.1: line rules, the header, the conformance repair, output options and the write report.
 * [Conversion](conversion.md) - How a dataset is converted between GEDCOM 5.5.1 and 7.x, as the FamilySearch migration guide says, when it is written or on demand.
