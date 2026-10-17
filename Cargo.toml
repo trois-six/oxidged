@@ -27,7 +27,7 @@ calendar = ["dep:calendrical_calculations", "dep:calendrier"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"], optional = true }
-zip = { version = "8.5", optional = true, default-features = false, features = ["deflate"] }
+zip = { version = "9", optional = true, default-features = false, features = ["deflate"] }
 calendrical_calculations = { version = "0.2", optional = true }
 # `default-features = false` drops calendrier's chrono bridge: its conversions apply a
 # Paris-versus-Greenwich clock offset, and we convert through Republican day counts instead.
