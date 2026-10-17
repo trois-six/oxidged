@@ -1,29 +1,18 @@
 # .github/workflows/ci.yml
 name: CI/CD Pipeline
 
-# A change limited to the documentation runs nothing: its checks are local
-# (AGENTS.md). Path filters do not apply to tags, so a release always runs.
+# A change limited to the documentation runs no job: `changes` tells the
+# others whether anything else changed, and `ci-ok`, the check to require,
+# passes when each job succeeded or was skipped. A tag (a release) and a
+# manual run run every job.
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
     tags:
       - 'v*'
-    paths-ignore:
-      - 'docs/**'
-      - '**/README.md'
-      - 'AGENTS.md'
-      - 'CLAUDE.md'
-      - 'NOTICE'
-      - 'license.md'
   pull_request:
     branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - '**/README.md'
-      - 'AGENTS.md'
-      - 'CLAUDE.md'
-      - 'NOTICE'
-      - 'license.md'
 
 env:
   CARGO_TERM_COLOR: always
@@ -34,8 +23,38 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && 'true' || steps.filter.outputs.code }}
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 1
+
+    - uses: dorny/paths-filter@v4
+      id: filter
+      if: ${{ !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' }}
+      with:
+        # With the default `some`, a `!` pattern matches every file outside
+        # it, so `code` matched documentation too. This quantifier treats
+        # the `!` patterns as exclusions.
+        predicate-quantifier: some-with-excludes
+        filters: |
+          # Anything except documentation. Docs-only commits skip every job.
+          code:
+            - '**'
+            - '!docs/**'
+            - '!**/*.md'
+
   test:
     name: Test Suite
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -84,6 +103,8 @@ jobs:
 
   msrv:
     name: MSRV (1.88)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -108,6 +129,8 @@ jobs:
 
   features:
     name: Each feature alone
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -137,6 +160,8 @@ jobs:
 
   cross-platform-test:
     name: Cross Platform Tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -167,6 +192,8 @@ jobs:
 
   memory:
     name: Peak memory and throughput (Linux)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -204,6 +231,8 @@ jobs:
 
   security-audit:
     name: Security Audit
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -232,3 +261,33 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/release.yml
+
+  # A skipped job reports "skipped", not "success": requiring the jobs
+  # themselves would leave every documentation pull request unmergeable.
+  # This one always runs, and passes when each of them either succeeded or
+  # was legitimately skipped. Point branch protection at this, not at the
+  # jobs it gathers.
+  ci-ok:
+    name: CI
+    if: always()
+    needs:
+      - changes
+      - test
+      - msrv
+      - features
+      - cross-platform-test
+      - memory
+      - security-audit
+    runs-on: ubuntu-latest
+    steps:
+    - name: Verify that nothing failed
+      env:
+        RESULTS: ${{ join(needs.*.result, ' ') }}
+      run: |
+        echo "results: $RESULTS"
+        for result in $RESULTS; do
+          case "$result" in
+            success|skipped) ;;
+            *) echo "a required job reported '$result'"; exit 1 ;;
+          esac
+        done
