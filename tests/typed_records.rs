@@ -952,3 +952,19 @@ fn a_repaired_data_of_a_text_citation_reads_and_writes_as_written() {
         written
     );
 }
+
+/// A record holding both a standard `CHAN` and an extension `_CHAN` (a
+/// `CHAN` the writer repaired, such as one without its `DATE`): the
+/// standard one takes the record's one change field, and the extension is
+/// not read back over it, so it stays an extension rather than leaving the
+/// standard one untyped.
+#[test]
+fn a_standard_structure_takes_its_field_before_a_repaired_one() {
+    let text = v551("0 @S1@ SOUR\n1 _CHAN\n2 NOTE n\n1 CHAN\n2 DATE 1 JAN 2000\n");
+    let data = Dataset::parse(&text);
+    assert!(oxidged::model::ledger::untyped(&data).is_empty());
+    let written = write_as(&data, GedcomVersion::V5_5_1);
+    let again = Dataset::parse(&written);
+    assert!(oxidged::model::ledger::untyped(&again).is_empty());
+    assert_eq!(write_as(&again, GedcomVersion::V5_5_1), written);
+}

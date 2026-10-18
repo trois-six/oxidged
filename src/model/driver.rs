@@ -705,14 +705,17 @@ pub(crate) trait RowFields {
 /// `INIL` the version does not permit under an `INDI`, `_SLGC` for an `SLGC`
 /// without its `FAMC`), or one whose pointer payload the standard tag takes
 /// (`_FAMC @F1@` under an `EVEN`). Any other node, a text payload included,
-/// is read as it is. `parent`: the structure the substructure is of; `spec`:
+/// is read as it is, and so is one whose field holds one structure when the
+/// parent holds a standard substructure of its tag, which takes the field.
+/// `parent`: the structure the substructure is of; `fields` and `lookup`,
+/// its row's fields and the field of each standard tag; `spec`:
 /// the structure types of the reading structure
 /// ([`RowFields::spec_names`]), of which the parent's own tag is the type the
 /// substructure is read in.
 fn read_tag_of<'a>(
     child: NodeRef<'a>,
     parent: NodeRef<'_>,
-    lookup: &Lookup,
+    (fields, lookup): (&[FieldDesc], &Lookup),
     spec: &[&str],
     cx: &ReadCx<'_>,
 ) -> NodeRef<'a> {
@@ -726,7 +729,17 @@ fn read_tag_of<'a>(
     else {
         return child;
     };
-    if lookup.get(usize::from(std)).copied().unwrap_or(0) == 0 {
+    let field = usize::from(lookup.get(usize::from(std)).copied().unwrap_or(0));
+    if field == 0 {
+        return child;
+    }
+    // A field holding one structure goes to the standard substructure of
+    // its tag, which a read-back extension would otherwise take first.
+    if fields.get(field - 1).is_some_and(|f| !f.many)
+        && parent
+            .children()
+            .any(|c| c.tag_id() as usize == usize::from(std))
+    {
         return child;
     }
     let nested = child
@@ -797,7 +810,7 @@ pub(crate) fn read_row_into(
     if node.has_children() {
         cx.scratch.counts.resize(counts + fields.len(), 0);
         for child in node.children() {
-            let child = read_tag_of(child, node, lookup, spec, cx);
+            let child = read_tag_of(child, node, (fields, lookup), spec, cx);
             let field = usize::from(lookup.get(child.tag_id() as usize).copied().unwrap_or(0));
             if field > 0
                 && fields.get(field - 1).is_some_and(|f| f.many)
@@ -821,7 +834,7 @@ pub(crate) fn read_row_into(
     // The standard tags already sent aside, as a bit set.
     let mut sent = [0_u64; STANDARD_TAGS.len().div_ceil(64)];
     for child in node.children() {
-        let read = read_tag_of(child, node, lookup, spec, cx);
+        let read = read_tag_of(child, node, (fields, lookup), spec, cx);
         let tag = read.tag_id() as usize;
         let field = usize::from(lookup.get(tag).copied().unwrap_or(0));
         let (word, bit) = (tag / 64, 1_u64 << (tag % 64));

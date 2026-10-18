@@ -140,13 +140,34 @@ impl FieldOrder {
 /// the other ([`Conformer::model_order`]): the fields that hold one
 /// structure and have it, and the standard tags of substructures kept
 /// aside, as bit sets.
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct ModelRead {
     full: [u64; 4],
     aside: [u64; 8],
+    /// The standard tags of the structure's own substructures: an extension
+    /// is not read back into a field that holds one structure when one of
+    /// them has the field's tag, as the reader does not (`read_tag_of`).
+    present: [u64; 8],
+}
+
+/// The word of a bit set holding bit `i`, and the bit.
+fn bit(set: &mut [u64], i: u16) -> Option<(&mut u64, u64)> {
+    let word = set.get_mut(usize::from(i / 64))?;
+    Some((word, 1 << (i % 64)))
 }
 
 impl ModelRead {
+    /// For the substructures of one structure, by their standard tags.
+    fn of(tags: impl Iterator<Item = Option<u16>>) -> Self {
+        let mut read = Self::default();
+        for tag in tags.flatten() {
+            if let Some((w, b)) = bit(&mut read.present, tag) {
+                *w |= b;
+            }
+        }
+        read
+    }
+
     /// The rank of the field `c`, a substructure of a `ty` structure, goes
     /// to; `None` when it is kept aside.
     fn read<'a, N: Node<'a>>(
@@ -156,24 +177,29 @@ impl ModelRead {
         ty: StructId,
         c: N,
     ) -> Option<u16> {
-        fn bit(set: &mut [u64], i: u16) -> Option<(&mut u64, u64)> {
-            let word = set.get_mut(usize::from(i / 64))?;
-            Some((word, 1 << (i % 64)))
-        }
         // An extension the reader reads back as its standard structure is
         // ordered as that structure.
-        let standard = match c.standard_tag() {
-            Some(standard) => standard,
-            None => read_back(
-                version,
-                &[ty],
-                c.tag(),
-                ExtBody::of(c.payload()),
-                c.children().any(|g| g.standard_tag().is_none()),
-                |t| c.children().any(|g| g.tag() == t),
-            )?,
+        let (standard, read_back_as) = match c.standard_tag() {
+            Some(standard) => (standard, false),
+            None => (
+                read_back(
+                    version,
+                    &[ty],
+                    c.tag(),
+                    ExtBody::of(c.payload()),
+                    c.children().any(|g| g.standard_tag().is_none()),
+                    |t| c.children().any(|g| g.tag() == t),
+                )?,
+                true,
+            ),
         };
         let field = order.field(ty, standard);
+        if read_back_as
+            && field.is_some_and(|f| !f.many)
+            && bit(&mut self.present, standard).is_some_and(|(w, b)| *w & b != 0)
+        {
+            return None;
+        }
         let fits = field.filter(|f| {
             let blocked = bit(&mut self.aside, standard).is_none_or(|(w, b)| *w & b != 0);
             let full = !f.many && bit(&mut self.full, f.rank).is_none_or(|(w, b)| *w & b != 0);
@@ -1716,7 +1742,8 @@ impl<'n> Conformer<'n> {
         let Some(order) = self.order else {
             return;
         };
-        let mut read = ModelRead::default();
+        let present = ModelRead::of(s.substructures.iter().map(|c| c.standard_tag()));
+        let mut read = present.clone();
         let (mut last, mut aside) = (0, false);
         let in_order = s.substructures.iter().all(|c| {
             let Some(rank) = read.read(self.rules.version, order, ty, c) else {
@@ -1728,7 +1755,7 @@ impl<'n> Conformer<'n> {
             ok
         });
         if !in_order {
-            let mut read = ModelRead::default();
+            let mut read = present.clone();
             let mut fields: Vec<(u16, Structure)> = Vec::with_capacity(s.substructures.len());
             let mut kept: Vec<Structure> = Vec::new();
             for c in std::mem::take(&mut s.substructures) {
@@ -1745,7 +1772,7 @@ impl<'n> Conformer<'n> {
         if levels <= 1 {
             return;
         }
-        let mut read = ModelRead::default();
+        let mut read = present;
         for c in &mut s.substructures {
             if read.read(self.rules.version, order, ty, &*c).is_none() || c.substructures.is_empty()
             {
@@ -1771,7 +1798,8 @@ impl<'n> Conformer<'n> {
     }
 
     fn in_order_under<'a, M: Node<'a>>(&self, order: &FieldOrder, n: M, ty: StructId) -> bool {
-        let mut read = ModelRead::default();
+        let present = ModelRead::of(n.children().map(|c| c.standard_tag()));
+        let mut read = present.clone();
         let (mut last, mut aside) = (0, false);
         let in_order = n.children().all(|c| {
             let Some(rank) = read.read(self.rules.version, order, ty, c) else {
@@ -1785,7 +1813,7 @@ impl<'n> Conformer<'n> {
         if !in_order {
             return false;
         }
-        let mut read = ModelRead::default();
+        let mut read = present;
         n.children().all(|c| {
             if read.read(self.rules.version, order, ty, c).is_none()
                 || c.children().next().is_none()
