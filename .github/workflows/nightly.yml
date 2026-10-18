@@ -1,5 +1,6 @@
-# Long-running checks that do not gate pull requests: fuzzing and the opt-in
-# conformance corpora (fetched from pinned commits, never vendored).
+# Long-running checks that do not gate pull requests: fuzzing, the opt-in
+# conformance corpora (fetched from pinned commits, never vendored), the
+# beta and nightly toolchains, and Windows and macOS.
 name: Nightly
 
 on:
@@ -107,6 +108,76 @@ jobs:
       with:
         name: fuzz-artifacts
         path: fuzz/artifacts/
+
+  # The next Rust releases, weeks before a new lint or a change breaks the
+  # stable toolchain ci.yml tests on each commit.
+  toolchains:
+    name: Test Suite (${{ matrix.rust }})
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [beta, nightly]
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 1
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.rust }}
+        components: clippy
+
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-nextest
+
+    - name: Run clippy
+      run: |
+        cargo clippy --workspace --all-targets --all-features -- -D warnings
+        cargo clippy -p oxidged --all-targets --no-default-features -- -D warnings
+
+    - name: Run tests
+      run: |
+        cargo nextest run --workspace --all-features
+        cargo test --workspace --all-features --doc
+
+  # Windows and macOS, which ci.yml runs on a tag or on demand only.
+  platforms:
+    name: Cross Platform Tests (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 1
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-nextest
+
+    - name: Build
+      run: cargo build --workspace --release
+
+    - name: Run tests
+      run: |
+        cargo nextest run --workspace --release
+        cargo test --workspace --release --doc
 
   corpora:
     name: Conformance corpora (opt-in tier)
