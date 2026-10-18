@@ -1,10 +1,14 @@
 # .github/workflows/ci.yml
 name: CI/CD Pipeline
 
-# A change limited to the documentation runs no job: `changes` tells the
-# others whether anything else changed, and `ci-ok`, the check to require,
-# passes when each job succeeded or was skipped. A tag (a release) and a
-# manual run run every job.
+# Only what a change can break runs: `changes` tells the jobs whether the
+# crates (their sources, tests, manifests, the tools and fuzz targets, this
+# workflow and the release one) changed, which runs them all, or only the
+# documentation, which the crate includes as its rustdoc and tests as such
+# (the `docs` job). Anything else (the nightly workflow, editor settings)
+# runs nothing. `ci-ok`, the check to require, passes when each job
+# succeeded or was skipped. A tag (a release) and a manual run run every
+# job. A newer push to the same branch cancels the run in progress.
 on:
   workflow_dispatch:
   push:
@@ -13,6 +17,10 @@ on:
       - 'v*'
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,6 +39,7 @@ jobs:
       pull-requests: read
     outputs:
       code: ${{ (startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && 'true' || steps.filter.outputs.code }}
+      docs: ${{ steps.filter.outputs.docs }}
     steps:
     - uses: actions/checkout@v7
       with:
@@ -40,16 +49,21 @@ jobs:
       id: filter
       if: ${{ !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' }}
       with:
-        # With the default `some`, a `!` pattern matches every file outside
-        # it, so `code` matched documentation too. This quantifier treats
-        # the `!` patterns as exclusions.
-        predicate-quantifier: some-with-excludes
         filters: |
-          # Anything except documentation. Docs-only commits skip every job.
           code:
-            - '**'
-            - '!docs/**'
-            - '!**/*.md'
+            - 'src/**'
+            - 'tests/**'
+            - 'benches/**'
+            - 'cli/**'
+            - 'fuzz/**'
+            - 'tools/**'
+            - 'Cargo.toml'
+            - 'Cargo.lock'
+            - '.github/workflows/ci.yml'
+            - '.github/workflows/release.yml'
+          docs:
+            - 'docs/**'
+            - '**/*.md'
 
   test:
     name: Test Suite
@@ -71,6 +85,11 @@ jobs:
         toolchain: ${{ matrix.rust }}
         components: rustfmt, clippy
 
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-nextest
+
     - name: Cache dependencies
       uses: actions/cache@v6
       with:
@@ -78,7 +97,8 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-${{ matrix.rust }}-cargo-
 
     - name: Check formatting
       run: |
@@ -92,8 +112,12 @@ jobs:
         cargo clippy --workspace --all-targets --all-features -- -D warnings
         cargo clippy -p oxidged --all-targets --no-default-features -- -D warnings
 
+    # nextest runs the tests of every binary in parallel, each in a process
+    # of its own; it runs no doctest, which cargo test runs after.
     - name: Run tests
-      run: cargo test --workspace --all-features --verbose
+      run: |
+        cargo nextest run --workspace --all-features
+        cargo test --workspace --all-features --doc
 
     - name: Check the documentation
       env:
@@ -115,6 +139,11 @@ jobs:
     - name: Install Rust 1.88
       uses: dtolnay/rust-toolchain@1.88
 
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-nextest
+
     - name: Cache dependencies
       uses: actions/cache@v6
       with:
@@ -123,15 +152,26 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-msrv-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-msrv-cargo-
 
     - name: Run tests at the minimum supported Rust version
-      run: cargo test --workspace --all-features
+      run: |
+        cargo nextest run --workspace --all-features
+        cargo test --workspace --all-features --doc
 
+  # Every feature of the library on its own, and none: cargo-hack's
+  # combinations, one per parallel job (`--partition`), run with nextest.
+  # All features together are the `test` job's; `default` is empty, and
+  # the command line has no feature of its own. A new feature needs one
+  # more partition.
   features:
-    name: Each feature alone
+    name: Each feature alone (${{ matrix.partition }}/4)
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        partition: [1, 2, 3, 4]
 
     steps:
     - uses: actions/checkout@v7
@@ -141,10 +181,10 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
 
-    - name: Install cargo-hack
+    - name: Install cargo-hack and cargo-nextest
       uses: taiki-e/install-action@v2
       with:
-        tool: cargo-hack
+        tool: cargo-hack,cargo-nextest
 
     - name: Cache dependencies
       uses: actions/cache@v6
@@ -153,10 +193,14 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-hack-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-hack-${{ matrix.partition }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-hack-${{ matrix.partition }}-cargo-
 
     - name: Build and test each feature on its own, and none
-      run: cargo hack test --workspace --each-feature
+      run: |
+        hack="cargo hack -p oxidged --each-feature --exclude-all-features --exclude-features default --partition ${{ matrix.partition }}/4"
+        $hack nextest run
+        $hack test --doc
 
   cross-platform-test:
     name: Cross Platform Tests
@@ -175,6 +219,11 @@ jobs:
     - name: Install Rust
       uses: dtolnay/rust-toolchain@stable
 
+    - name: Install cargo-nextest
+      uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-nextest
+
     - name: Cache dependencies
       uses: actions/cache@v6
       with:
@@ -182,13 +231,16 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        key: ${{ runner.os }}-release-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-release-cargo-
 
     - name: Build
       run: cargo build --workspace --release --verbose
 
     - name: Run tests
-      run: cargo test --workspace --release --verbose
+      run: |
+        cargo nextest run --workspace --release
+        cargo test --workspace --release --doc
 
   memory:
     name: Peak memory and throughput (Linux)
@@ -251,6 +303,41 @@ jobs:
     - name: Run security audit
       run: cargo audit --deny warnings
 
+  # The documentation alone: `docs/` is the crate's rustdoc (src/lib.rs
+  # includes it), its examples are doctests, and tests/docs.rs checks the
+  # bundle's format. A change to the crates runs all of this in `test`.
+  docs:
+    name: Documentation
+    needs: changes
+    if: needs.changes.outputs.docs == 'true' && needs.changes.outputs.code != 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 1
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache dependencies
+      uses: actions/cache@v6
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-docs-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-docs-cargo-
+
+    - name: Doctests, the bundle's format and the rustdoc
+      env:
+        RUSTDOCFLAGS: -D warnings
+      run: |
+        cargo test --workspace --all-features --doc
+        cargo test --all-features --test docs
+        cargo doc --workspace --no-deps --all-features
+
   trigger-release:
     name: Trigger Release
     needs: [test, msrv, features, cross-platform-test, memory, security-audit]
@@ -273,6 +360,7 @@ jobs:
     needs:
       - changes
       - test
+      - docs
       - msrv
       - features
       - cross-platform-test
