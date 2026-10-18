@@ -2738,13 +2738,23 @@ pub(crate) fn synthesisable(schema: &Schema, v7: bool, parent: &str, sub: Struct
     }
 }
 
-/// The types of `version` the spec names `names` stand for that have the tag
-/// `tag`: the type a structure of that tag is read in. A row of the reader
-/// stands for several types, of several tags (the event row for `BIRT` and
-/// for `EVEN`), and only those with the parent's tag are the parent's.
-pub(crate) fn type_ids(version: GedcomVersion, names: &[&str], tag: &str) -> Vec<StructId> {
+/// The types of `version` the spec names `names` stand for that a structure
+/// of the tag `tag` is read in, `pointer` saying whether its payload is a
+/// pointer. A row of the reader stands for several types, of several tags
+/// (the event row for `BIRT` and for `EVEN`), and of one tag in several
+/// forms (a source citation pointing to a source, or a 5.5.1 citation of a
+/// text): only those with the parent's tag are the parent's, and of those,
+/// the form its payload selects, as the conformance pass picks it, so that
+/// the reader and the pass read a repaired substructure back alike. When no
+/// form fits the payload, every type of the tag is kept.
+pub(crate) fn type_ids(
+    version: GedcomVersion,
+    names: &[&str],
+    tag: &str,
+    pointer: bool,
+) -> Vec<StructId> {
     let schema = version.rules().spec;
-    names
+    let of_tag: Vec<StructId> = names
         .iter()
         .filter_map(|name| {
             (1..schema.structs.len())
@@ -2752,7 +2762,13 @@ pub(crate) fn type_ids(version: GedcomVersion, names: &[&str], tag: &str) -> Vec
                 .find(|&id| index::name_is(schema, usize::from(id), name))
         })
         .filter(|&id| schema.tag(id) == tag)
-        .collect()
+        .collect();
+    let of_form: Vec<StructId> = of_tag
+        .iter()
+        .copied()
+        .filter(|&id| matches!(schema.kind(id).0, Kind::Pointer | Kind::NullablePointer) == pointer)
+        .collect();
+    if of_form.is_empty() { of_tag } else { of_form }
 }
 
 /// Whether the conformance repair writes the standard substructure `tag` of

@@ -935,3 +935,20 @@ fn repaired_family_text_of_an_event_stays_an_extension() {
         written
     );
 }
+
+/// A 5.5.1 citation of a text has no `DATA`, which a citation of a source
+/// record has: the writer repairs one as `_DATA`. Read back, the `_DATA` is
+/// judged by the citation's own form, as the conformance pass judges it, so
+/// that a record the pass finds clean is one its repair leaves as it is
+/// (a fuzzed input once made the reader and the pass disagree, and the
+/// writer's debug check failed).
+#[test]
+fn a_repaired_data_of_a_text_citation_reads_and_writes_as_written() {
+    let text = v551("0 @I1@ INDI\n1 SOUR A text source\n2 _DATA\n2 NOTE n\n");
+    let written = write_as(&Dataset::parse(&text), GedcomVersion::V5_5_1);
+    assert_has(&written, "1 SOUR A text source\n2 _DATA\n2 NOTE n\n");
+    assert_eq!(
+        write_as(&Dataset::parse(&written), GedcomVersion::V5_5_1),
+        written
+    );
+}

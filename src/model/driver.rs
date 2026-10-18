@@ -733,7 +733,7 @@ fn read_tag_of<'a>(
         .children()
         .any(|c| c.tag_id() as usize >= STANDARD_TAGS.len());
     let version = cx.version;
-    let types = crate::spec::conform::type_ids(version, spec, parent.name());
+    let types = crate::spec::conform::type_ids(version, spec, parent.name(), parent.is_pointer());
     let body = if child.is_pointer() {
         crate::spec::conform::ExtBody::Pointer
     } else if child.has_no_payload() {
