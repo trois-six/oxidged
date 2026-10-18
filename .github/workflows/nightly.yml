@@ -26,10 +26,13 @@ jobs:
     - name: Install Rust nightly
       uses: dtolnay/rust-toolchain@nightly
 
+    # Built here rather than installed prebuilt: the only Linux release of
+    # cargo-fuzz is a musl binary, which builds the targets for musl by
+    # default, where the sanitizer cannot run.
     - name: Install cargo-fuzz
-      uses: taiki-e/install-action@v2
-      with:
-        tool: cargo-fuzz
+      run: |
+        cargo install cargo-fuzz --locked
+        cargo fuzz --version
 
     - name: Seed the corpora with the test fixtures
       run: |
