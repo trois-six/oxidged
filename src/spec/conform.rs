@@ -1742,7 +1742,7 @@ impl<'n> Conformer<'n> {
         let Some(order) = self.order else {
             return;
         };
-        let present = ModelRead::of(s.substructures.iter().map(|c| c.standard_tag()));
+        let present = ModelRead::of(s.substructures.iter().map(Node::standard_tag));
         let mut read = present.clone();
         let (mut last, mut aside) = (0, false);
         let in_order = s.substructures.iter().all(|c| {
@@ -1798,7 +1798,7 @@ impl<'n> Conformer<'n> {
     }
 
     fn in_order_under<'a, M: Node<'a>>(&self, order: &FieldOrder, n: M, ty: StructId) -> bool {
-        let present = ModelRead::of(n.children().map(|c| c.standard_tag()));
+        let present = ModelRead::of(n.children().map(Node::standard_tag));
         let mut read = present.clone();
         let (mut last, mut aside) = (0, false);
         let in_order = n.children().all(|c| {
