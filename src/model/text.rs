@@ -659,6 +659,12 @@ impl XrefId {
             .and_then(NonZeroU32::new)
             .map(Self)
     }
+
+    /// The name for this xref
+    #[must_use]
+    pub fn str<'a, S: AsRef<Store> + ?Sized>(&self, store: &'a S) -> &'a str {
+        store.as_ref().xref(*self)
+    }
 }
 
 /// The tag of a [`Node`](super::Node): a standard tag's index in the
