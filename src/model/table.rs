@@ -1772,8 +1772,12 @@ const _: () = {
     assert!(size_of::<List<Event>>() == 8);
     assert!(size_of::<NodeRow>() == 24);
     assert!(
-    size_of::<View<'_, Event>>() ==
-        if cfg!(target_pointer_width = "64") { 24 } else { 12 }
+        size_of::<View<'_, Event>>()
+            == if cfg!(target_pointer_width = "64") {
+                24
+            } else {
+                12
+            }
     );
     assert!(size_of::<IndividualRow>() <= 72);
     assert!(size_of::<FamilyRow>() <= 60);
