@@ -1,6 +1,6 @@
 [package]
 name = "oxidged"
-version = "0.3.2"
+version = "0.3.3"
 authors = [
     "Robert Pirtle <astropirtle@gmail.com>",
     "Jacob Benison <ge3224@gmail.com>",
