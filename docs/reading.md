@@ -3,7 +3,7 @@ type: "Feature Reference"
 title: "Reading"
 description: "How oxidged reads any GEDCOM input without failing or losing data: decoding, line rules, typing, the builder's inputs and options, strict mode and the read report."
 tags: [oxidged, reading, builder, encodings]
-generated: { by: human:maintainer, at: 2026-10-17T19:29:24Z }
+generated: { by: human:maintainer, at: 2026-11-21T15:51:38Z }
 ---
 
 # Reading
@@ -106,7 +106,7 @@ assert_eq!(data.individuals().first().unwrap().events().len(), 1);
 | Bytes in any encoding (a UTF-8 `Vec<u8>` kept without a copy) | `build_from_bytes`, `Dataset::from_bytes` |
 | Bytes in an encoding given by the caller | `build_from_bytes_with_encoding` |
 | Any `io::Read` | `build_from_reader` |
-| A GEDZIP archive (feature `gedzip`) | `build_from_gedzip` ([GEDZIP](gedzip.md)) |
+| A GEDZIP archive (feature `gedzip`) | `build_from_gedzip`; one record at a time, `GedcomStreamParser` over `GedzipReader::open_gedcom` ([GEDZIP](gedzip.md)) |
 | The same, with what reading found | `build_from_str_with_report`, `build_from_bytes_with_report`, `build_from_reader_with_report` |
 
 A builder is `Clone` and reusable (`build_*` take `&self`); its getters are

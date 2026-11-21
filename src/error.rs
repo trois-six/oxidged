@@ -66,8 +66,16 @@ impl std::error::Error for GedcomError {
     }
 }
 
+/// An I/O error, or with the `gedzip` feature
+/// [`GedcomError::Gedzip`]`(`[`EntryTooLarge`](crate::gedzip::GedzipError::EntryTooLarge)`)`
+/// for the error a [`GedzipEntry`](crate::gedzip::GedzipEntry) read past its
+/// limit fails with.
 impl From<std::io::Error> for GedcomError {
     fn from(err: std::io::Error) -> Self {
+        #[cfg(feature = "gedzip")]
+        if let Some(too_large) = crate::gedzip::entry_too_large(&err) {
+            return GedcomError::Gedzip(too_large);
+        }
         GedcomError::Io(err)
     }
 }

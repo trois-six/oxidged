@@ -26,6 +26,13 @@
 //! names a reader uses for itself (`gedcom.ged`, `META-INF/…`,
 //! `MANIFEST.MF`) are refused, and the names of directories are not media.
 //!
+//! An entry can be read and written whole (as bytes) or streamed: read as it
+//! is decompressed ([`GedzipReader::open_media_file`],
+//! [`GedzipReader::open_gedcom`]) and written from any reader
+//! ([`GedzipWriter::add_media_file_from`],
+//! [`GedzipWriter::write_gedcom_from`]), so that no entry is held whole in
+//! memory.
+//!
 //! # Example
 //!
 //! ```rust,no_run
@@ -60,14 +67,15 @@
 //! ```
 
 use std::collections::HashMap;
-use std::io::{Read, Seek, Write};
+use std::fmt;
+use std::io::{self, Read, Seek, Write};
 
 use zip::CompressionMethod;
-use zip::read::ZipArchive;
+use zip::read::{ZipArchive, ZipFile};
 use zip::write::ZipWriter;
 
 use crate::model::Dataset;
-use crate::writer::{GedcomWriter, WriteError};
+use crate::writer::{GedcomWriter, RepairPolicy, WriteError};
 use crate::{GedcomBuilder, GedcomError, GedcomVersion};
 
 /// The required filename for the GEDCOM data stream within a GEDZIP archive.
@@ -137,9 +145,11 @@ impl From<zip::result::ZipError> for GedzipError {
     }
 }
 
+/// An I/O error, or [`GedzipError::EntryTooLarge`] for the error a
+/// [`GedzipEntry`] read past its limit fails with.
 impl From<std::io::Error> for GedzipError {
     fn from(err: std::io::Error) -> Self {
-        Self::Io(err)
+        entry_too_large(&err).unwrap_or(Self::Io(err))
     }
 }
 
@@ -228,35 +238,33 @@ impl<R: Read + Seek> GedzipReader<R> {
         self
     }
 
-    /// Reads a whole entry, within the configured limit.
-    fn read_entry(&mut self, name: &str) -> Result<Vec<u8>, GedzipError> {
-        self.read_entry_within(name, self.max_entry_size)
-    }
-
-    /// Reads a whole entry, within `limit`.
-    fn read_entry_within(
+    /// Opens the entry `name` (an exact entry name) to read it within
+    /// `limit`: refused when the size it declares exceeds the limit, and
+    /// failing as it is read past it.
+    fn open_within(
         &mut self,
         name: &str,
         limit: Option<u64>,
-    ) -> Result<Vec<u8>, GedzipError> {
+    ) -> Result<GedzipEntry<'_, R>, GedzipError> {
         let file = self.archive.by_name(name)?;
-        let too_large = || GedzipError::EntryTooLarge {
-            name: name.to_string(),
-            limit: limit.unwrap_or_default(),
-        };
-        let mut bytes = Vec::new();
-        if let Some(limit) = limit {
-            if file.size() > limit {
-                return Err(too_large());
-            }
-            file.take(limit.saturating_add(1)).read_to_end(&mut bytes)?;
-            if bytes.len() as u64 > limit {
-                return Err(too_large());
-            }
-        } else {
-            let mut file = file;
-            file.read_to_end(&mut bytes)?;
+        if let Some(limit) = limit
+            && file.size() > limit
+        {
+            return Err(GedzipError::EntryTooLarge {
+                name: name.to_string(),
+                limit,
+            });
         }
+        Ok(GedzipEntry {
+            inner: Within::new(file, name, limit),
+        })
+    }
+
+    /// Reads a whole entry, within the configured limit.
+    fn read_entry(&mut self, name: &str) -> Result<Vec<u8>, GedzipError> {
+        let mut bytes = Vec::new();
+        self.open_within(name, self.max_entry_size)?
+            .read_to_end(&mut bytes)?;
         Ok(bytes)
     }
 
@@ -286,9 +294,12 @@ impl<R: Read + Seek> GedzipReader<R> {
             .map(String::as_str)
     }
 
-    /// Reads the dataset of the archive (its `gedcom.ged`) with `builder`.
-    /// The builder's size limit applies to `gedcom.ged` as it is
-    /// decompressed: over it, the entry is refused
+    /// Reads the dataset of the archive (its `gedcom.ged`) with `builder`,
+    /// as [`GedcomBuilder::build_from_reader`] reads the entry as it is
+    /// decompressed: the bytes read become the dataset's store. The
+    /// builder's size limit applies to `gedcom.ged` as it is decompressed,
+    /// with the reader's own ([`GedzipReader::max_entry_size`]), the
+    /// smaller one first: over it, the entry is refused
     /// ([`GedzipError::EntryTooLarge`]) before it is read whole.
     ///
     /// # Errors
@@ -303,11 +314,13 @@ impl<R: Read + Seek> GedzipReader<R> {
                 Some(own.map_or(max, |own| own.min(max)))
             }
         };
-        let bytes = self.read_entry_within(GEDCOM_FILENAME, limit)?;
-        builder.build_from_bytes(bytes)
+        // The entry fails past `limit`, which is at most the builder's: the
+        // builder never reaches its own.
+        builder.build_from_reader(self.open_within(GEDCOM_FILENAME, limit)?)
     }
 
-    /// Reads the raw bytes of the `gedcom.ged` file.
+    /// Reads the raw bytes of the `gedcom.ged` file, within the limit set
+    /// with [`GedzipReader::max_entry_size`].
     ///
     /// This is useful if you need to process the GEDCOM data with custom settings.
     ///
@@ -316,6 +329,41 @@ impl<R: Read + Seek> GedzipReader<R> {
     /// Returns an error if the file cannot be read.
     pub fn read_gedcom_bytes(&mut self) -> Result<Vec<u8>, GedzipError> {
         self.read_entry(GEDCOM_FILENAME)
+    }
+
+    /// Opens `gedcom.ged` to read it as it is decompressed, within the limit
+    /// set with [`GedzipReader::max_entry_size`] (see [`GedzipEntry`]).
+    ///
+    /// Wrapped in a [`std::io::BufReader`], it feeds a
+    /// [`GedcomStreamParser`](crate::GedcomStreamParser), which reads the
+    /// dataset one record at a time without holding the file:
+    ///
+    /// ```rust
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use oxidged::gedzip::{write_gedzip, GedzipReader};
+    /// use oxidged::model::RecordRef;
+    /// use oxidged::{Dataset, GedcomStreamParser};
+    /// use std::io::{BufReader, Cursor};
+    ///
+    /// let data = Dataset::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NAME Ann /Example/\n0 TRLR\n");
+    /// let mut archive = GedzipReader::new(Cursor::new(write_gedzip(&data)?))?;
+    /// let mut names = Vec::new();
+    /// for record in GedcomStreamParser::new(BufReader::new(archive.open_gedcom()?))? {
+    ///     if let RecordRef::Individual(indi) = record?.record() {
+    ///         names.extend(indi.full_name());
+    ///     }
+    /// }
+    /// assert_eq!(names, ["Ann Example"]);
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// [`GedzipError::EntryTooLarge`] when the size the entry declares
+    /// exceeds the limit; otherwise when the entry cannot be opened.
+    pub fn open_gedcom(&mut self) -> Result<GedzipEntry<'_, R>, GedzipError> {
+        self.open_within(GEDCOM_FILENAME, self.max_entry_size)
     }
 
     /// Returns a list of all file names in the archive.
@@ -349,11 +397,32 @@ impl<R: Read + Seek> GedzipReader<R> {
     /// Returns an error if the file does not exist, cannot be read, or
     /// exceeds the limit set with [`GedzipReader::max_entry_size`].
     pub fn read_media_file(&mut self, name: &str) -> Result<Vec<u8>, GedzipError> {
+        let mut bytes = Vec::new();
+        self.open_media_file(name)?.read_to_end(&mut bytes)?;
+        Ok(bytes)
+    }
+
+    /// Opens a media file of the archive to read it as it is decompressed,
+    /// within the limit set with [`GedzipReader::max_entry_size`] (see
+    /// [`GedzipEntry`]): a file of any size is copied elsewhere without
+    /// being held in memory.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The file name (path) within the archive, or a `FILE`
+    ///   reference to it (see [`GedzipReader::find_entry`])
+    ///
+    /// # Errors
+    ///
+    /// [`GedzipError::MissingMedia`] when the archive has no such file,
+    /// [`GedzipError::EntryTooLarge`] when the size it declares exceeds the
+    /// limit; otherwise when the entry cannot be opened.
+    pub fn open_media_file(&mut self, name: &str) -> Result<GedzipEntry<'_, R>, GedzipError> {
         let entry = self
             .find_entry(name)
             .ok_or_else(|| GedzipError::MissingMedia(name.to_string()))?
             .to_string();
-        self.read_entry(&entry)
+        self.open_within(&entry, self.max_entry_size)
     }
 
     /// Checks if a file exists in the archive, by name or `FILE` reference
@@ -373,6 +442,170 @@ impl<R: Read + Seek> GedzipReader<R> {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.archive.len() <= 1
+    }
+}
+
+/// An entry of a GEDZIP archive, read as it is decompressed: what
+/// [`GedzipReader::open_media_file`] and [`GedzipReader::open_gedcom`]
+/// give. It borrows the reader until it is dropped.
+///
+/// It reads no more than the limit set with
+/// [`GedzipReader::max_entry_size`]. An entry that declares more is refused
+/// when it is opened; one that holds more than it declares fails with an
+/// [`io::Error`] of kind [`io::ErrorKind::InvalidData`] once its declared
+/// size is passed; and reading past the limit, whatever the entry declares,
+/// fails with an [`io::Error`] of kind [`io::ErrorKind::FileTooLarge`],
+/// which converts into [`GedzipError::EntryTooLarge`] (`?` in a function
+/// returning a [`GedzipError`]) and into
+/// [`GedcomError::Gedzip`]`(`[`GedzipError::EntryTooLarge`]`)`. The bytes it
+/// gives are checked against the entry's CRC-32 at its end.
+///
+/// ```rust
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// use oxidged::gedzip::{GedzipReader, GedzipWriter};
+/// use oxidged::Dataset;
+/// use std::io::{self, Cursor, Read};
+///
+/// // An archive with a media file of 1 MiB, written from a reader.
+/// let mut writer = GedzipWriter::new(Cursor::new(Vec::new()))?;
+/// writer.write_dataset(&Dataset::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR\n"))?;
+/// let written = writer.add_media_file_from("media/scan.tif", &mut io::repeat(0x2A).take(1 << 20))?;
+/// assert_eq!(written, 1 << 20);
+/// let archive = writer.finish()?.into_inner();
+///
+/// // Copy the media file out without holding it.
+/// let mut reader = GedzipReader::new(Cursor::new(archive))?;
+/// let mut entry = reader.open_media_file("media/scan.tif")?;
+/// assert_eq!(entry.size(), 1 << 20);
+/// assert_eq!(io::copy(&mut entry, &mut io::sink())?, 1 << 20);
+/// # Ok(())
+/// # }
+/// ```
+pub struct GedzipEntry<'a, R: Read> {
+    inner: Within<ZipFile<'a, R>>,
+}
+
+impl<R: Read> GedzipEntry<'_, R> {
+    /// The entry's name in the archive.
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.inner.name
+    }
+
+    /// The uncompressed size the archive declares for the entry, in bytes:
+    /// what it holds, unless the archive lies (the bytes read are checked).
+    #[must_use]
+    pub fn size(&self) -> u64 {
+        self.inner.inner.size()
+    }
+}
+
+impl<R: Read> Read for GedzipEntry<'_, R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.inner.read(buf)
+    }
+}
+
+impl<R: Read> fmt::Debug for GedzipEntry<'_, R> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GedzipEntry")
+            .field("name", &self.inner.name)
+            .field("size", &self.size())
+            .field("limit", &self.inner.limit)
+            .field("read", &self.inner.read)
+            .finish()
+    }
+}
+
+/// A reader of an entry that fails once more than `limit` bytes are read.
+struct Within<T> {
+    inner: T,
+    name: String,
+    limit: Option<u64>,
+    /// The bytes read so far.
+    read: u64,
+}
+
+impl<T> Within<T> {
+    fn new(inner: T, name: &str, limit: Option<u64>) -> Self {
+        Self {
+            inner,
+            name: name.to_string(),
+            limit,
+            read: 0,
+        }
+    }
+}
+
+impl<T: Read> Read for Within<T> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let Some(limit) = self.limit else {
+            return self.inner.read(buf);
+        };
+        // One byte past the limit at most: enough to tell it is passed.
+        let room = limit.saturating_sub(self.read).saturating_add(1);
+        let len = usize::try_from(room).map_or(buf.len(), |room| room.min(buf.len()));
+        let n = self.inner.read(&mut buf[..len])?;
+        self.read = self
+            .read
+            .saturating_add(u64::try_from(n).unwrap_or(u64::MAX));
+        if self.read > limit {
+            return Err(io::Error::new(
+                io::ErrorKind::FileTooLarge,
+                TooLarge {
+                    name: self.name.clone(),
+                    limit,
+                },
+            ));
+        }
+        Ok(n)
+    }
+}
+
+/// The error an entry read past its limit fails with, carried by an
+/// [`io::Error`] ([`entry_too_large`]).
+#[derive(Debug)]
+struct TooLarge {
+    name: String,
+    limit: u64,
+}
+
+impl fmt::Display for TooLarge {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (name, limit) = (&self.name, self.limit);
+        write!(f, "the archive entry {name} exceeds the {limit}-byte limit")
+    }
+}
+
+impl std::error::Error for TooLarge {}
+
+/// [`GedzipError::EntryTooLarge`], when `err` is the error a
+/// [`GedzipEntry`] read past its limit fails with.
+pub(crate) fn entry_too_large(err: &io::Error) -> Option<GedzipError> {
+    let too_large = err.get_ref()?.downcast_ref::<TooLarge>()?;
+    Some(GedzipError::EntryTooLarge {
+        name: too_large.name.clone(),
+        limit: too_large.limit,
+    })
+}
+
+/// A writer that passes no flush on: [`GedcomWriter::write`] flushes at its
+/// end, and flushing a Deflate stream ends a block, which would change the
+/// bytes of the entry. The entry is complete when the next one starts or
+/// the archive is finished.
+struct Unflushed<'a, W: Write>(&'a mut W);
+
+impl<W: Write> Write for Unflushed<'_, W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.0.write_all(buf)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
 
@@ -409,9 +642,11 @@ impl<R: Read + Seek> GedzipReader<R> {
 /// // Write the dataset
 /// writer.write_dataset(&data)?;
 ///
-/// // Add media files
+/// // Add media files, whole or from a reader
 /// let photo_bytes = std::fs::read("photos/john.jpg")?;
 /// writer.add_media_file("photos/john.jpg", &photo_bytes)?;
+/// let mut scan = File::open("scans/census.tif")?;
+/// writer.add_media_file_from("scans/census.tif", &mut scan)?;
 ///
 /// // Finalize the archive
 /// writer.finish()?;
@@ -457,10 +692,16 @@ impl<W: Write + Seek> GedzipWriter<W> {
     /// (§4). The bytes are UTF-8, with a byte order mark unless `writer`
     /// says otherwise.
     ///
+    /// The text goes into the archive entry as `writer` produces it, not
+    /// through a copy of it. Under
+    /// [`RepairPolicy::Error`], it is written
+    /// whole first, so that a refusal leaves the archive without
+    /// `gedcom.ged`.
+    ///
     /// # Errors
     ///
     /// [`GedzipError::Write`] when `writer` fails (under
-    /// [`RepairPolicy::Error`](crate::RepairPolicy::Error)); otherwise when
+    /// [`RepairPolicy::Error`]); otherwise when
     /// the archive cannot be written.
     pub fn write_dataset_with(
         &mut self,
@@ -473,12 +714,22 @@ impl<W: Write + Seek> GedzipWriter<W> {
             .filter(|v| v.is_v7())
             .or_else(|| data.version().is_v7().then(|| data.version()))
             .unwrap_or(GedcomVersion::V7_0);
-        let mut bytes = Vec::new();
+        let writer = writer.clone().gedcom_version(version);
+        if writer.config().on_nonconformant == RepairPolicy::Error {
+            let mut bytes = Vec::new();
+            writer.write(&mut bytes, data)?;
+            return self.write_gedcom_bytes(&bytes);
+        }
+        self.start_gedcom()?;
+        // The archive's own failures are I/O errors, as for the bytes.
         writer
-            .clone()
-            .gedcom_version(version)
-            .write(&mut bytes, data)?;
-        self.write_gedcom_bytes(&bytes)
+            .write(Unflushed(&mut self.zip), data)
+            .map_err(|e| match e {
+                WriteError::Io(e) => GedzipError::from(e),
+                e => GedzipError::Write(e),
+            })?;
+        self.has_gedcom = true;
+        Ok(())
     }
 
     /// Writes raw GEDCOM bytes to the archive as `gedcom.ged`.
@@ -489,12 +740,32 @@ impl<W: Write + Seek> GedzipWriter<W> {
     ///
     /// Returns an error if the file cannot be written.
     pub fn write_gedcom_bytes(&mut self, bytes: &[u8]) -> Result<(), GedzipError> {
+        self.write_gedcom_from(&mut &*bytes).map(drop)
+    }
+
+    /// Writes the GEDCOM text `reader` gives to the archive as
+    /// `gedcom.ged`, as it is read, and returns its size in bytes: what
+    /// [`GedzipWriter::write_gedcom_bytes`] does without holding the text.
+    ///
+    /// # Errors
+    ///
+    /// When `reader` fails or the archive cannot be written; the entry is
+    /// then left incomplete, and the archive is to be discarded.
+    pub fn write_gedcom_from(
+        &mut self,
+        reader: &mut (impl Read + ?Sized),
+    ) -> Result<u64, GedzipError> {
+        self.start_gedcom()?;
+        let size = io::copy(reader, &mut self.zip)?;
+        self.has_gedcom = true;
+        Ok(size)
+    }
+
+    /// Starts the `gedcom.ged` entry, deflated.
+    fn start_gedcom(&mut self) -> Result<(), GedzipError> {
         let options = zip::write::FileOptions::<()>::default()
             .compression_method(CompressionMethod::Deflated);
-
         self.zip.start_file(GEDCOM_FILENAME, options)?;
-        self.zip.write_all(bytes)?;
-        self.has_gedcom = true;
         Ok(())
     }
 
@@ -519,6 +790,40 @@ impl<W: Write + Seek> GedzipWriter<W> {
     /// (`gedcom.ged`, `META-INF/…`, `MANIFEST.MF`) or a directory's (ending
     /// with `/`); otherwise when the file cannot be written.
     pub fn add_media_file(&mut self, name: &str, bytes: &[u8]) -> Result<(), GedzipError> {
+        self.add_media_file_from(name, &mut &*bytes).map(drop)
+    }
+
+    /// Adds a media file to the archive from what `reader` gives, as it is
+    /// read, and returns its size in bytes: what
+    /// [`GedzipWriter::add_media_file`] does without holding the file. The
+    /// file is named and stored as `add_media_file` names and stores it.
+    ///
+    /// ```rust
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// use oxidged::gedzip::GedzipWriter;
+    /// use oxidged::Dataset;
+    /// use std::io::{Cursor, Read};
+    ///
+    /// let mut writer = GedzipWriter::new(Cursor::new(Vec::new()))?;
+    /// writer.write_dataset(&Dataset::parse("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR\n"))?;
+    /// // Any reader: an open file, a network stream, another archive's entry.
+    /// let mut source = Cursor::new(b"letter text".to_vec());
+    /// assert_eq!(writer.add_media_file_from("letters/a%20letter.txt", &mut source)?, 11);
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// [`GedzipError::ReservedName`] for a name GEDZIP reserves, as
+    /// [`GedzipWriter::add_media_file`]; otherwise when `reader` fails or
+    /// the file cannot be written, the entry then left incomplete and the
+    /// archive to be discarded.
+    pub fn add_media_file_from(
+        &mut self,
+        name: &str,
+        reader: &mut (impl Read + ?Sized),
+    ) -> Result<u64, GedzipError> {
         if is_reserved(name) {
             return Err(GedzipError::ReservedName(name.to_string()));
         }
@@ -527,8 +832,7 @@ impl<W: Write + Seek> GedzipWriter<W> {
             zip::write::FileOptions::<()>::default().compression_method(media_compression(&entry));
 
         self.zip.start_file(entry, options)?;
-        self.zip.write_all(bytes)?;
-        Ok(())
+        Ok(io::copy(reader, &mut self.zip)?)
     }
 
     /// Adds multiple media files to the archive.
@@ -868,6 +1172,55 @@ mod tests {
 
         let result = reader.read_media_file("nonexistent.jpg");
         assert!(matches!(result, Err(GedzipError::MissingMedia(_))));
+    }
+
+    /// An entry is refused once more than the limit is read, whatever size
+    /// it declares: the bytes up to the limit are given, the next read
+    /// fails, and the error converts into `EntryTooLarge`.
+    #[test]
+    fn an_entry_fails_past_its_limit_as_it_is_read() {
+        let source = [b'x'; 100];
+        let mut exact = Within::new(&source[..], "media/a.txt", Some(100));
+        let mut bytes = Vec::new();
+        assert_eq!(exact.read_to_end(&mut bytes).unwrap(), 100);
+
+        let mut within = Within::new(&source[..], "media/a.txt", Some(60));
+        let mut buf = [0; 50];
+        assert_eq!(within.read(&mut buf).unwrap(), 50);
+        // Ten bytes are left within the limit; reading eleven passes it.
+        let err = within.read(&mut buf).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::FileTooLarge);
+        assert_eq!(
+            err.to_string(),
+            "the archive entry media/a.txt exceeds the 60-byte limit"
+        );
+        assert!(matches!(
+            GedzipError::from(err),
+            GedzipError::EntryTooLarge { name, limit: 60 } if name == "media/a.txt"
+        ));
+
+        // Through the stream parser, a `GedcomError::Gedzip`.
+        let text = b"0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n0 TRLR\n";
+        let within = Within::new(&text[..], GEDCOM_FILENAME, Some(20));
+        let read: Result<Vec<_>, _> =
+            crate::GedcomStreamParser::new(std::io::BufReader::new(within))
+                .and_then(Iterator::collect);
+        assert!(matches!(
+            read,
+            Err(GedcomError::Gedzip(GedzipError::EntryTooLarge {
+                limit: 20,
+                ..
+            }))
+        ));
+        // Other I/O errors stay what they are.
+        assert!(matches!(
+            GedzipError::from(std::io::Error::other("failed")),
+            GedzipError::Io(_)
+        ));
+        assert!(matches!(
+            GedcomError::from(std::io::Error::other("failed")),
+            GedcomError::Io(_)
+        ));
     }
 
     #[test]

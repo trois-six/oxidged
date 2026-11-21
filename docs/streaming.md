@@ -3,7 +3,7 @@ type: "Feature Reference"
 title: "Streaming"
 description: "Reading and writing one record at a time in bounded memory: the stream parser, the visitor and the stream writer."
 tags: [oxidged, streaming, visitor]
-generated: { by: human:maintainer, at: 2026-10-17T11:42:19Z }
+generated: { by: human:maintainer, at: 2026-11-21T15:51:38Z }
 ---
 
 # Streaming
@@ -39,7 +39,8 @@ of its own, which keeps the record's text and rows; `record.record()` is its
 view. `parser.nodes()` yields the records as lossless
 structures instead; for a whole file as structures, nothing interpreted,
 use `oxidged::tree::Tree` (in memory) or `oxidged::tree::TreeReader`
-(streaming).
+(streaming). The `gedcom.ged` of a GEDZIP archive is streamed the same way,
+from `GedzipReader::open_gedcom` in a `BufReader` ([GEDZIP](gedzip.md)).
 
 `GedcomStreamWriter` writes the other way: a header, then each record as
 it is given (from a `GedcomStreamParser`, or a dataset), repaired and
