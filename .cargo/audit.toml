@@ -1,0 +1,13 @@
+# cargo-audit configuration (`cargo audit --deny warnings` in ci.yml).
+#
+# An advisory is ignored only when no release fixes it and the crate it
+# names is not ours to remove, each with the reason below.
+[advisories]
+ignore = [
+    # chrono is unmaintained, with no successor release. It reaches the
+    # graph only as a build dependency of calendrier (the `calendar`
+    # feature): oxidged turns calendrier's default features off, which drops
+    # its runtime dependency on chrono, so no chrono code is linked into the
+    # library (`cargo tree -i chrono -e normal` is empty).
+    "RUSTSEC-2026-0543",
+]
