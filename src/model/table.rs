@@ -1753,7 +1753,9 @@ where
 // The layout of what a dataset holds, checked at compile time: a row per
 // structure, the frequent ones small (`tests/sizes.rs` checks the owned
 // types). A text or a pointer is 8 bytes, an index or an enumeration
-// value 4, a list 8.
+// value 4, a list 8. A view is three words, two references and an index
+// padded to one: 24 bytes on a 64-bit target, 12 on a 32-bit one
+// (`wasm32`, which CI builds for).
 const _: () = {
     use super::citation::CitationRow;
     use super::date::{ChangeDateRow, DateRow, ExactDateRow};
@@ -1771,7 +1773,7 @@ const _: () = {
     assert!(size_of::<Option<Code>>() == 4);
     assert!(size_of::<List<Event>>() == 8);
     assert!(size_of::<NodeRow>() == 24);
-    assert!(size_of::<View<'_, Event>>() == 24);
+    assert!(size_of::<View<'_, Event>>() == 3 * size_of::<usize>());
     assert!(size_of::<IndividualRow>() <= 72);
     assert!(size_of::<FamilyRow>() <= 60);
     assert!(size_of::<SourceRow>() <= 128);

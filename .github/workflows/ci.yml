@@ -243,6 +243,41 @@ jobs:
         cargo nextest run --workspace --release
         cargo test --workspace --release --doc
 
+  # The library on a 32-bit target: its layout is checked at compile time
+  # (src/model/table.rs), and a view's size depends on the pointer width.
+  # wasm32 has no test runner here, so the job builds the library (not the
+  # command line) with every feature, and with none.
+  wasm32:
+    name: Build for wasm32
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 1
+
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: wasm32-unknown-unknown
+
+    - name: Cache dependencies
+      uses: actions/cache@v6
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-wasm32-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-wasm32-cargo-
+
+    - name: Build the library for wasm32
+      run: |
+        cargo build -p oxidged --target wasm32-unknown-unknown --all-features
+        cargo build -p oxidged --target wasm32-unknown-unknown --no-default-features
+
   memory:
     name: Peak memory and throughput (Linux)
     needs: changes
@@ -341,7 +376,7 @@ jobs:
 
   trigger-release:
     name: Trigger Release
-    needs: [test, msrv, features, cross-platform-test, memory, security-audit]
+    needs: [test, msrv, features, cross-platform-test, wasm32, memory, security-audit]
     if: startsWith(github.ref, 'refs/tags/v')
     # The release workflow creates the GitHub release: a called workflow can
     # only get the permissions its caller grants, and GitHub refuses to start
@@ -365,6 +400,7 @@ jobs:
       - msrv
       - features
       - cross-platform-test
+      - wasm32
       - memory
       - security-audit
     runs-on: ubuntu-latest
