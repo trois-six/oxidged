@@ -6,8 +6,9 @@ oxidged is a Rust library that reads any GEDCOM file leniently, without losing
 data, and writes strictly conformant GEDCOM 5.5.1, 7.0 and 7.1. The repository
 is a workspace of the library (the root) and its command-line tool
 (`oxidged-cli`, in `cli/`); the fuzz targets (`fuzz/`) and the tools
-(`tools/perf`, `tools/differential`, `tools/spec-tables`) are packages of their
-own.
+(`tools/perf`, `tools/differential`) are packages of their own, and
+`tools/spec-tables` is a Python script that generates the specification
+tables.
 
 ## Principles
 
@@ -61,7 +62,7 @@ docs` for `docs/` and the READMEs (and `cargo test --doc --all-features -p
 oxidged` when a Rust example changes), a YAML parse of an edited workflow.
 
 Before committing code: `cargo fmt --all --check` (and in `fuzz/` and each
-tool), `cargo clippy --workspace --all-targets -- -D warnings` with all
+Rust tool), `cargo clippy --workspace --all-targets -- -D warnings` with all
 features, and on the library (`-p oxidged`, which the CLI's features would
 otherwise unify) with none and each feature alone, `cargo test --workspace
 --all-features` and `cargo test -p oxidged --no-default-features`, `RUSTDOCFLAGS="-D warnings" cargo doc --workspace
