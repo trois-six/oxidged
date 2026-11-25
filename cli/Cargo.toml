@@ -13,7 +13,6 @@ categories = ["command-line-utilities", "parser-implementations"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/trois-six/oxidged"
-homepage = "https://github.com/trois-six/oxidged"
 edition = "2024"
 rust-version = "1.88"
 include = ["Cargo.toml", "src/**/*.rs", "README.md", "license.md"]
