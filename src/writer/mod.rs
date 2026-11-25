@@ -1176,11 +1176,8 @@ impl GedcomWriter {
         let mut conformed =
             conform_records(&mut records, rules.version, Some(order(rules.version)));
         let mut repairs = std::mem::take(&mut conformed.repairs);
-        if self.config.on_nonconformant == RepairPolicy::Error {
-            if let Some(first) = repairs.into_iter().next() {
-                return Err(WriteError::NonConformant(Box::new(first)));
-            }
-            repairs = Vec::new();
+        if self.config.on_nonconformant == RepairPolicy::Error && !repairs.is_empty() {
+            return Err(WriteError::NonConformant(Box::new(repairs.swap_remove(0))));
         }
         let mut sink = self.sink(
             None,
