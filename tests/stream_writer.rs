@@ -535,3 +535,31 @@ fn streams_a_parsed_stream_from_its_headers_dataset() {
     );
     assert_eq!(text, write(false));
 }
+
+/// A `VERS` with a substructure, which the typed header keeps aside, still
+/// declares the version: started with that header, the stream writer reads
+/// the records as 7.0, as the dataset does, rather than converting them
+/// from 5.5.1 (which takes an inline multimedia link out into a record).
+#[test]
+fn a_version_kept_aside_is_still_the_declared_one() {
+    let data = Dataset::parse(
+        "0 HEAD\n1 GEDC\n2 VERS 7.0\n3 _NOTE aside\n0 @F1@ FAM\n1 OBJE\n2 FILE photo.jpg\n\
+         3 FORM image/jpeg\n0 @F2@ FAM\n0 TRLR\n",
+    );
+    let header = data.header().unwrap();
+    assert!(header.gedcom.as_ref().unwrap().version.is_none());
+    assert_eq!(header.declared_version(&data).as_deref(), Some("7.0"));
+    assert_eq!(data.version(), GedcomVersion::V7_0);
+
+    let config = WriterConfig {
+        version: Some(GedcomVersion::V7_0),
+        ..WriterConfig::default()
+    };
+    let mut w = GedcomStreamWriter::new(Vec::new(), config.clone(), header, &data).unwrap();
+    for r in data.records().skip(1) {
+        w.write_record(r).unwrap();
+    }
+    let text = String::from_utf8(w.finish().unwrap().0).unwrap();
+    assert!(!text.contains("0 @M1@ OBJE"), "{text}");
+    assert_eq!(text, streamed(&data, config).0);
+}

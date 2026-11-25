@@ -78,14 +78,31 @@ gedcom_struct! {
 }
 
 impl Header {
-    /// The version the header declares (`GEDC.VERS`), as written.
+    /// The version the header declares (`GEDC.VERS`), as written: the
+    /// first `VERS`, also when the typed field cannot hold it (one with a
+    /// substructure, kept in `extra`), as [`Dataset::version`] reads it.
+    ///
+    /// [`Dataset::version`]: crate::Dataset::version
     #[must_use]
     pub fn declared_version<'a, S: AsRef<Store> + ?Sized>(
         &'a self,
         store: &'a S,
     ) -> Option<std::borrow::Cow<'a, str>> {
-        let vers = self.gedcom.as_ref()?.version.as_ref()?;
-        Some(vers.to_str(store))
+        let gedcom = self.gedcom.as_ref()?;
+        if let Some(vers) = &gedcom.version {
+            return Some(vers.to_str(store));
+        }
+        // The typed field holds the first `VERS` unless it is set aside,
+        // and then so are the ones after it: the first in `extra` is the
+        // first of the file.
+        let kept = gedcom
+            .extra
+            .iter()
+            .find(|n| store.as_ref().tag(n.tag) == "VERS")?;
+        match &kept.payload {
+            super::node::Value::Text(vers) => Some(vers.to_str(store)),
+            super::node::Value::None | super::node::Value::Pointer(_) => None,
+        }
     }
 
     /// Writes the header into `out` as the writer completes it for
