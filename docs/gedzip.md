@@ -3,7 +3,7 @@ type: "Feature Reference"
 title: "GEDZIP"
 description: "Reading and writing GEDZIP archives, a GEDCOM 7.x dataset bundled with its media files, with the gedzip feature."
 tags: [oxidged, gedzip, media]
-generated: { by: human:maintainer, at: 2026-11-21T15:51:38Z }
+generated: { by: human:maintainer, at: 2026-11-28T09:00:00Z }
 ---
 
 # GEDZIP
@@ -49,7 +49,8 @@ found as `read_media_file` finds it) and `open_gedcom` (`gedcom.ged`) give a
 `add_media_file_from` and `write_gedcom_from` write an entry from any
 `io::Read` as it is read, and return its size. They name, refuse, compress
 and limit entries as the functions that take or give bytes, which are made
-of them:
+of them (media of an already compressed format, JPEG XL among them, are
+stored as they are, and the rest is deflated):
 
 ```rust
 use oxidged::gedzip::{GedzipReader, GedzipWriter};

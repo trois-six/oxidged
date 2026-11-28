@@ -877,9 +877,9 @@ impl<W: Write + Seek> GedzipWriter<W> {
 /// time on both ends, so they are stored as they are, as GEDZIP suggests
 /// (§4, 7.0.17); `gedcom.ged` and other text is deflated.
 fn media_compression(name: &str) -> CompressionMethod {
-    const COMPRESSED: [&str; 18] = [
-        "jpg", "jpeg", "png", "gif", "webp", "avif", "heic", "jp2", "pdf", "mp3", "m4a", "ogg",
-        "opus", "mp4", "m4v", "webm", "zip", "gz",
+    const COMPRESSED: [&str; 19] = [
+        "jpg", "jpeg", "png", "gif", "webp", "avif", "heic", "jp2", "jxl", "pdf", "mp3", "m4a",
+        "ogg", "opus", "mp4", "m4v", "webm", "zip", "gz",
     ];
     let extension = name
         .rsplit_once('.')

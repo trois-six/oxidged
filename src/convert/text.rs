@@ -442,6 +442,8 @@ mod tests {
     fn media_types_both_ways() {
         assert_eq!(media_type("jpg").as_deref(), Some("image/jpeg"));
         assert_eq!(media_type("WAV").as_deref(), Some("audio/wav"));
+        assert_eq!(media_type("jxl").as_deref(), Some("image/jxl"));
+        assert_eq!(file_format("image/jxl").as_deref(), Some("jxl"));
         assert_eq!(media_type("other").as_deref(), Some("application/x-other"));
         assert_eq!(media_type("image/png"), None);
         assert_eq!(file_format("image/jpeg").as_deref(), Some("jpg"));

@@ -183,6 +183,7 @@ pub(super) const MEDIA_TYPES: &[(&str, &str)] = &[
     ("wav", "audio/wav"),
     ("png", "image/png"),
     ("webp", "image/webp"),
+    ("jxl", "image/jxl"),
     ("svg", "image/svg+xml"),
     ("pdf", "application/pdf"),
     ("txt", "text/plain"),

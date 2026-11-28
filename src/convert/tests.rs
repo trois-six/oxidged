@@ -175,6 +175,17 @@ fn a_5_5_link_moves_its_format_into_its_file() {
     has(&out, "0 @M1@ OBJE\n1 FILE photo.bmp\n2 FORM image/bmp\n");
 }
 
+/// A JPEG XL file converts both ways between its 5.5.1 format and its media type.
+#[test]
+fn a_jpeg_xl_file_converts_both_ways() {
+    let body = "0 @M1@ OBJE\n1 FILE photo.jxl\n2 FORM jxl\n";
+    let out = write("5.5.1", body, V70);
+    has(&out, "0 @M1@ OBJE\n1 FILE photo.jxl\n2 FORM image/jxl\n");
+    let body = "0 @M1@ OBJE\n1 FILE photo.jxl\n2 FORM image/jxl\n";
+    let out = write("7.0", body, V551);
+    has(&out, "0 @M1@ OBJE\n1 FILE photo.jxl\n2 FORM jxl\n");
+}
+
 #[test]
 fn known_extensions_are_declared() {
     let body = "0 @L1@ _LOC\n1 NAME Sampleton\n0 @I1@ INDI\n1 BIRT\n2 PLAC Sampleton\n3 _GOV ABC\n";

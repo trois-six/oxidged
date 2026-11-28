@@ -257,7 +257,11 @@ fn media_added_by_their_file_payload_are_named_unescaped() {
 
 #[test]
 fn compressed_media_are_stored_as_they_are() {
-    let bytes = archive(&[("photo.jpg", b"JPEG BYTES"), ("notes.txt", b"plain text")]);
+    let bytes = archive(&[
+        ("photo.jpg", b"JPEG BYTES"),
+        ("photo.jxl", b"JPEG XL BYTES"),
+        ("notes.txt", b"plain text"),
+    ]);
     let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
     let method = |zip: &mut zip::ZipArchive<Cursor<Vec<u8>>>, name: &str| {
         let mut entry = zip.by_name(name).unwrap();
@@ -267,6 +271,10 @@ fn compressed_media_are_stored_as_they_are() {
     };
     assert_eq!(
         method(&mut zip, "photo.jpg"),
+        zip::CompressionMethod::Stored
+    );
+    assert_eq!(
+        method(&mut zip, "photo.jxl"),
         zip::CompressionMethod::Stored
     );
     assert_eq!(

@@ -1050,6 +1050,12 @@ fn open_551_file_formats() {
             vec![],
         ),
         ("1 FILE a.webp\n2 FORM webp\n", "2 FORM webp\n", vec![]),
+        ("1 FILE a.jxl\n2 FORM jxl\n", "2 FORM jxl\n", vec![]),
+        (
+            "1 FILE a.jxl\n2 FORM image/jxl\n",
+            "2 FORM jxl\n",
+            vec![R::EnumValue],
+        ),
         (
             "1 FILE a.pdf\n2 FORM application/pdf\n",
             "2 FORM pdf\n",

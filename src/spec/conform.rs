@@ -912,13 +912,14 @@ fn pointer(tag: &str, xref: &str) -> Structure {
 
 /// File extensions and their media types; the first extension of a type
 /// is its 5.5.1 file format (`image/jpeg` is `jpg`).
-const FILE_TYPES: [(&[&str], &str); 16] = [
+const FILE_TYPES: [(&[&str], &str); 17] = [
     (&["jpg", "jpeg"], "image/jpeg"),
     (&["png"], "image/png"),
     (&["gif"], "image/gif"),
     (&["bmp"], "image/bmp"),
     (&["tif", "tiff"], "image/tiff"),
     (&["webp"], "image/webp"),
+    (&["jxl"], "image/jxl"),
     (&["svg"], "image/svg+xml"),
     (&["pdf"], "application/pdf"),
     (&["txt"], "text/plain"),
